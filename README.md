@@ -23,7 +23,8 @@ Sistema completo de locação de produtos infantis com foco em experiência web 
    - `product-images` (Acesso público)
    - `contracts` (Acesso público para este MVP)
    - `signatures` (Acesso público para este MVP)
-4. Copie suas credenciais (URL e Anon Key) do painel de configurações da API.
+4. Execute também `supabase/storage-policies.sql` no SQL Editor (permite upload de documentos e PDFs pelo site).
+5. Copie suas credenciais (URL e Anon Key) do painel de configurações da API.
 
 ## Instalação Local
 1. Clone o repositório ou baixe os arquivos.

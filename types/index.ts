@@ -52,7 +52,6 @@ export interface ContractClientData {
   reservation_id: string;
   nome: string;
   cpf: string;
-  rg: string;
   endereco: string;
   cidade: string;
   estado: string;

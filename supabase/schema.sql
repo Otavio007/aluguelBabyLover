@@ -106,3 +106,36 @@ CREATE INDEX idx_products_categoria ON products(categoria);
 CREATE INDEX idx_reservations_cliente_cpf ON reservations(cliente_cpf);
 CREATE INDEX idx_reservations_cliente_telefone ON reservations(cliente_telefone);
 CREATE INDEX idx_contracts_reservation_id ON contracts(reservation_id);
+
+-- Storage policies (execute after creating buckets: contracts, signatures, product-images)
+-- No Supabase Dashboard: Storage > New bucket > marque "Public bucket" ou use as políticas abaixo.
+
+CREATE POLICY "Public read contracts bucket"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'contracts');
+
+CREATE POLICY "Public upload contracts bucket"
+ON storage.objects FOR INSERT
+TO anon, authenticated
+WITH CHECK (bucket_id = 'contracts');
+
+CREATE POLICY "Public update contracts bucket"
+ON storage.objects FOR UPDATE
+TO anon, authenticated
+USING (bucket_id = 'contracts');
+
+CREATE POLICY "Public read signatures bucket"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'signatures');
+
+CREATE POLICY "Public upload signatures bucket"
+ON storage.objects FOR INSERT
+TO anon, authenticated
+WITH CHECK (bucket_id = 'signatures');
+
+CREATE POLICY "Public update signatures bucket"
+ON storage.objects FOR UPDATE
+TO anon, authenticated
+USING (bucket_id = 'signatures');

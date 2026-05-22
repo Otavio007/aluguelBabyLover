@@ -44,10 +44,6 @@ export const ContractPdf = ({ clientData, reservation, product, documentoUrl }: 
           <Text style={styles.value}>{clientData.cpf}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>RG:</Text>
-          <Text style={styles.value}>{clientData.rg}</Text>
-        </View>
-        <View style={styles.row}>
           <Text style={styles.label}>Endereço:</Text>
           <Text style={styles.value}>{`${clientData.endereco}, ${clientData.cidade} - ${clientData.estado}, CEP: ${clientData.cep}`}</Text>
         </View>

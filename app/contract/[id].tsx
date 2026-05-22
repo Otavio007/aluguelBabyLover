@@ -20,7 +20,6 @@ import { ContractPdf } from '@/services/ContractPdf';
 const schema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
   cpf: z.string().min(11, 'CPF inválido'),
-  rg: z.string().optional(),
   endereco: z.string().min(5, 'Endereço obrigatório'),
   cidade: z.string().min(2, 'Cidade obrigatória'),
   estado: z.string().min(2, 'Estado obrigatório'),
@@ -31,6 +30,13 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
+
+function getErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: string }).message);
+  }
+  return 'Erro desconhecido';
+}
 
 export default function ContractPage() {
   const { id, startDate, startTime, endDate, endTime } = useLocalSearchParams<{
@@ -80,47 +86,49 @@ export default function ContractPage() {
       // 2. Upload Document Photo
       const documentoUrl = await uploadService.uploadDocument(reservation.id, documentImage);
 
-      // 3. Generate and Upload PDF
-      const pdfClientData = {
-        id: '',
-        reservation_id: reservation.id,
-        nome: data.nome,
-        cpf: data.cpf,
-        rg: data.rg || '',
-        endereco: data.endereco,
-        cidade: data.cidade,
-        estado: data.estado,
-        cep: data.cep,
-        telefone: data.telefone,
-        email: data.email
-      };
+      // 3. Generate and Upload PDF (opcional — não bloqueia o aluguel)
+      let pdfUrl: string | null = null;
+      try {
+        const pdfClientData = {
+          id: '',
+          reservation_id: reservation.id,
+          nome: data.nome,
+          cpf: data.cpf,
+          endereco: data.endereco,
+          cidade: data.cidade,
+          estado: data.estado,
+          cep: data.cep,
+          telefone: data.telefone,
+          email: data.email,
+        };
 
-      const blob = await pdf(
-        <ContractPdf 
-          clientData={pdfClientData} 
-          reservation={reservation} 
-          product={product!} 
-          documentoUrl={documentoUrl} 
-        />
-      ).toBlob();
-      
-      const pdfUrl = await uploadService.uploadContractPdf(reservation.id, blob);
+        const blob = await pdf(
+          <ContractPdf
+            clientData={pdfClientData}
+            reservation={reservation}
+            product={product!}
+            documentoUrl={documentoUrl}
+          />
+        ).toBlob();
+
+        pdfUrl = await uploadService.uploadContractPdf(reservation.id, blob);
+      } catch (pdfError) {
+        console.warn('PDF não gerado, reserva será salva sem arquivo PDF:', pdfError);
+      }
 
       // 4. Create Contract and Client Data records
-      const contractPayload: any = {
+      const contractPayload: Record<string, string | null> = {
         reservation_id: reservation.id,
         pdf_url: pdfUrl,
-        assinatura_url: documentoUrl, // Fallback to store doc image url in signature_url
-        documento_url: documentoUrl,
+        assinatura_url: documentoUrl,
         observacoes: data.observacoes || '',
       };
 
       try {
-        await contractsService.createContract(contractPayload);
+        await contractsService.createContract(contractPayload as any);
       } catch (err: any) {
-        // Fallback in case column 'documento_url' does not exist in db yet
         if (err.code === '42703' || err.message?.includes('documento_url')) {
-          const { documento_url, ...retryPayload } = contractPayload;
+          const { documento_url, ...retryPayload } = contractPayload as any;
           await contractsService.createContract(retryPayload);
         } else {
           throw err;
@@ -128,9 +136,15 @@ export default function ContractPage() {
       }
 
       await contractsService.createClientData({
-        ...data,
-        rg: data.rg || '',
         reservation_id: reservation.id,
+        nome: data.nome,
+        cpf: data.cpf,
+        endereco: data.endereco,
+        cidade: data.cidade,
+        estado: data.estado,
+        cep: data.cep,
+        telefone: data.telefone,
+        email: data.email,
       });
 
       // 5. Success
@@ -138,7 +152,14 @@ export default function ContractPage() {
       router.replace('/');
     } catch (error) {
       console.error(error);
-      alert('Erro ao finalizar aluguel. Tente novamente.');
+      const msg = getErrorMessage(error);
+      if (msg.includes('Bucket not found') || msg.includes('not found')) {
+        alert('Erro no armazenamento de arquivos. Verifique os buckets "signatures" e "contracts" no Supabase.');
+      } else if (msg.includes('row-level security') || msg.includes('policy')) {
+        alert('Permissão negada no servidor. Configure as políticas de Storage e INSERT no Supabase.');
+      } else {
+        alert(`Erro ao finalizar aluguel: ${msg}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -164,22 +185,13 @@ export default function ContractPage() {
             )}
           />
 
-          <View className="flex-row space-x-4">
-            <Controller
-              control={control}
-              name="cpf"
-              render={({ field: { onChange, value } }) => (
-                <Input label="CPF" value={value} onChangeText={onChange} error={errors.cpf?.message} containerClassName="flex-1" />
-              )}
-            />
-            <Controller
-              control={control}
-              name="rg"
-              render={({ field: { onChange, value } }) => (
-                <Input label="RG" value={value} onChangeText={onChange} error={errors.rg?.message} containerClassName="flex-1" />
-              )}
-            />
-          </View>
+          <Controller
+            control={control}
+            name="cpf"
+            render={({ field: { onChange, value } }) => (
+              <Input label="CPF" value={value} onChangeText={onChange} error={errors.cpf?.message} />
+            )}
+          />
 
           <AddressFields control={control} errors={errors} setValue={setValue} />
 
@@ -212,7 +224,7 @@ export default function ContractPage() {
         <View className="mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
           <Text className="text-lg font-bold text-slate-900 mb-2">Documento com Foto</Text>
           <Text className="text-xs text-slate-500 mb-4">
-            Envie uma foto legível do seu documento de identidade (RG ou CNH) para validação do contrato.
+            Envie uma foto legível do seu documento de identidade (CNH ou outro documento com foto) para validação do contrato.
           </Text>
           
           {documentImage ? (
