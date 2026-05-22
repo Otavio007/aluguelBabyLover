@@ -12,9 +12,11 @@ import { Product } from '@/types';
 import { getProductImages, getFirstProductImage } from '@/utils/imageHelper';
 import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
 import { getProductDevolucaoDias, getProductEntregaHoraInicio, getProductEntregaHoraFim } from '@/utils/schedulingHelper';
+import { useNewRentalsCount } from '@/hooks/useNewRentalsCount';
 
 export default function AdminProducts() {
   const { data: products, isLoading, refetch } = useProducts();
+  const { newCount } = useNewRentalsCount();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,11 +217,21 @@ export default function AdminProducts() {
           <Text className="text-slate-500">Controle seus produtos</Text>
         </View>
         <View className="flex-row space-x-2">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.push('/admin/rentals')}
-            className="p-3 bg-slate-100 rounded-xl"
+            className="p-3 bg-slate-100 rounded-xl relative"
+            accessibilityLabel={
+              newCount > 0 ? `Contratos, ${newCount} aluguéis novos` : 'Contratos'
+            }
           >
-            <FileText size={20} color="#475569" />
+            <FileText size={20} color={newCount > 0 ? '#0284c7' : '#475569'} />
+            {newCount > 0 && (
+              <View className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full items-center justify-center border-2 border-white">
+                <Text className="text-[10px] font-bold text-white">
+                  {newCount > 9 ? '9+' : newCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setIsPasswordModalOpen(true)}
