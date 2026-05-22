@@ -10,6 +10,7 @@ import { Camera, Trash2 } from 'lucide-react-native';
 import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { AddressFields } from '@/components/business/AddressFields';
 import { useProduct } from '@/hooks/useProducts';
 import { reservationsService } from '@/services/reservationsService';
 import { contractsService } from '@/services/contractsService';
@@ -48,39 +49,6 @@ export default function ContractPage() {
   const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
-
-  const handleFetchCep = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, '');
-    if (cleanCep.length !== 8) return;
-
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      const data = await response.json();
-      
-      if (data.erro) {
-        return;
-      }
-
-      if (data.logradouro) {
-        const fullAddress = data.bairro 
-          ? `${data.logradouro} - ${data.bairro}`
-          : data.logradouro;
-        setValue('endereco', fullAddress, { shouldValidate: true });
-      } else if (data.bairro) {
-        setValue('endereco', data.bairro, { shouldValidate: true });
-      }
-      
-      if (data.localidade) {
-        setValue('cidade', data.localidade, { shouldValidate: true });
-      }
-      
-      if (data.uf) {
-        setValue('estado', data.uf, { shouldValidate: true });
-      }
-    } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
-    }
-  };
 
   const onSubmit = async (data: FormData) => {
     if (!documentImage) {
@@ -213,67 +181,7 @@ export default function ContractPage() {
             />
           </View>
 
-          <Controller
-            control={control}
-            name="endereco"
-            render={({ field: { onChange, value } }) => (
-              <Input label="Endereço" value={value} onChangeText={onChange} error={errors.endereco?.message} />
-            )}
-          />
-
-          <View className="flex-row space-x-4">
-            <Controller
-              control={control}
-              name="cidade"
-              render={({ field: { onChange, value } }) => (
-                <Input label="Cidade" value={value} onChangeText={onChange} error={errors.cidade?.message} containerClassName="flex-1" />
-              )}
-            />
-            <Controller
-              control={control}
-              name="estado"
-              render={({ field: { onChange, value } }) => (
-                <Input label="Estado" value={value} onChangeText={onChange} error={errors.estado?.message} containerClassName="w-24" />
-              )}
-            />
-            <Controller
-              control={control}
-              name="cep"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input 
-                  label="CEP" 
-                  value={value} 
-                  onChangeText={(val) => {
-                    // Apply CEP mask format (XXXXX-XXX) dynamically
-                    const cleaned = val.replace(/\D/g, '');
-                    let formatted = cleaned;
-                    if (cleaned.length > 5) {
-                      formatted = `${cleaned.substring(0, 5)}-${cleaned.substring(5, 8)}`;
-                    }
-                    onChange(formatted);
-                    
-                    if (cleaned.length === 8) {
-                      handleFetchCep(cleaned);
-                    }
-                  }} 
-                  onBlur={() => {
-                    onBlur();
-                    if (value) {
-                      const cleaned = value.replace(/\D/g, '');
-                      if (cleaned.length === 8) {
-                        handleFetchCep(cleaned);
-                      }
-                    }
-                  }}
-                  error={errors.cep?.message} 
-                  containerClassName="w-32" 
-                  keyboardType="numeric"
-                  maxLength={9}
-                  placeholder="00000-000"
-                />
-              )}
-            />
-          </View>
+          <AddressFields control={control} errors={errors} setValue={setValue} />
 
           <View className="flex-row space-x-4">
             <Controller
