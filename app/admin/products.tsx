@@ -77,10 +77,21 @@ export default function AdminProducts() {
   };
 
   const handleSave = async () => {
-    if (!editingProduct?.nome || !editingProduct?.valor) {
+    const valorStr = editingProduct?.valor?.toString().trim();
+    if (!editingProduct?.nome || !valorStr) {
       alert('Nome e valor são obrigatórios.');
       return;
     }
+
+    // Replace comma with dot for proper float parsing
+    const parsedValor = Number(valorStr.replace(',', '.'));
+    if (isNaN(parsedValor) || parsedValor <= 0) {
+      alert('Por favor, insira um valor numérico válido maior que zero.');
+      return;
+    }
+
+    const parsedQty = Number(editingProduct?.quantidade);
+    const finalQty = isNaN(parsedQty) || parsedQty < 1 ? 1 : Math.floor(parsedQty);
 
     setIsSubmitting(true);
     try {
@@ -100,11 +111,11 @@ export default function AdminProducts() {
           entrega_hora_fim: entregaHoraFim,
         }),
         categoria: editingProduct.categoria,
-        valor: Number(editingProduct.valor),
+        valor: parsedValor,
         tipo_cobranca: editingProduct.tipo_cobranca || 'Dia',
         marca: editingProduct.marca,
         estado_conservacao: editingProduct.estado_conservacao,
-        quantidade: Number(editingProduct.quantidade || 1),
+        quantidade: finalQty,
         ativo: true,
         regras_uso: JSON.stringify(rules),
         devolucao_dias: JSON.stringify(devolucaoDias),
