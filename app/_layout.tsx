@@ -1,33 +1,45 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { Platform } from 'react-native';
+
+// Polyfills para ambiente Web (evita erros de módulos do Node no navegador)
+if (Platform.OS === 'web') {
+  (global as any).__filename = '';
+  (global as any).__dirname = '';
+  
+  // Mock para o módulo 'url' que causa o erro pathToFileURL
+  const url = require('url');
+  if (!url.pathToFileURL) {
+    url.pathToFileURL = (path: string) => {
+      return new URL('file://' + path);
+    };
+  }
+
+  (global as any).process = {
+    ...(global as any).process,
+    env: { NODE_ENV: 'development' },
+    platform: 'web',
+    version: 'v18.0.0',
+    nextTick: (cb: any) => setTimeout(cb, 0),
+    binding: () => ({}),
+  };
+}
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import '../styles/global.css';
 
-import { useColorScheme } from '@/components/useColorScheme';
-
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -42,18 +54,24 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#ffffff' },
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="product/[id]" />
+          <Stack.Screen name="rent/[id]" />
+          <Stack.Screen name="contract/[id]" />
+          <Stack.Screen name="admin/login" />
+          <Stack.Screen name="admin/products" />
+          <Stack.Screen name="admin/rentals" />
+        </Stack>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
