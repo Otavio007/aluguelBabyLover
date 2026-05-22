@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, ScrollView, Alert, Image, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Camera, Trash2 } from 'lucide-react-native';
 
 import { Header } from '@/components/layout/Header';
@@ -15,20 +14,11 @@ import { reservationsService } from '@/services/reservationsService';
 import { contractsService } from '@/services/contractsService';
 import { uploadService } from '@/services/uploadService';
 import { generateContractPdf } from '@/services/generateContractPdf';
-
-const schema = z.object({
-  nome: z.string().min(3, 'Nome muito curto'),
-  cpf: z.string().min(11, 'CPF inválido'),
-  endereco: z.string().min(5, 'Endereço obrigatório'),
-  cidade: z.string().min(2, 'Cidade obrigatória'),
-  estado: z.string().min(2, 'Estado obrigatório'),
-  cep: z.string().min(8, 'CEP inválido'),
-  telefone: z.string().min(10, 'Telefone inválido'),
-  email: z.string().email('Email inválido'),
-  observacoes: z.string().optional(),
-});
-
-type FormData = z.infer<typeof schema>;
+import {
+  contractFormSchema,
+  ContractFormData,
+  getFormErrorMessages,
+} from '@/utils/formValidators';
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -49,17 +39,62 @@ export default function ContractPage() {
   const router = useRouter();
   const { data: product } = useProduct(id!);
   const [documentImage, setDocumentImage] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [submitFeedback, setSubmitFeedback] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
-  const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<ContractFormData>({
+    resolver: zodResolver(contractFormSchema),
+    defaultValues: {
+      nome: '',
+      cpf: '',
+      endereco: '',
+      cidade: '',
+      estado: '',
+      cep: '',
+      telefone: '',
+      email: '',
+      observacoes: '',
+    },
+    mode: 'onSubmit',
   });
 
-  const onSubmit = async (data: FormData) => {
+  const showAlert = (message: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(message);
+    } else {
+      Alert.alert('Atenção', message);
+    }
+  };
+
+  const onValidationError = (fieldErrors: FieldErrors<ContractFormData>) => {
+    const messages = getFormErrorMessages(fieldErrors);
+    const text =
+      messages.length > 0
+        ? `Corrija os campos abaixo:\n\n• ${messages.join('\n• ')}`
+        : 'Preencha todos os campos obrigatórios.';
+    setSubmitFeedback(text.replace(/\n/g, ' '));
+    showAlert(text);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const onSubmit = async (data: ContractFormData) => {
+    setSubmitFeedback(null);
+
     if (!documentImage) {
-      alert('Por favor, envie a foto do seu documento antes de finalizar.');
+      const msg = 'Envie a foto do seu documento antes de finalizar.';
+      setDocumentError(msg);
+      setSubmitFeedback(msg);
+      showAlert(msg);
       return;
     }
+    setDocumentError(null);
 
     setIsSubmitting(true);
     try {
@@ -154,22 +189,32 @@ export default function ContractPage() {
         }
       }
 
-      // 5. Success
-      alert('Aluguel finalizado com sucesso! O contrato foi gerado e salvo.');
+      showAlert('Aluguel finalizado com sucesso! O contrato foi gerado e salvo.');
       router.replace('/');
     } catch (error) {
       console.error(error);
       const msg = getErrorMessage(error);
+      let userMsg = `Erro ao finalizar aluguel: ${msg}`;
       if (msg.includes('Bucket not found') || msg.includes('not found')) {
-        alert('Erro no armazenamento de arquivos. Verifique os buckets "signatures" e "contracts" no Supabase.');
+        userMsg =
+          'Erro no armazenamento de arquivos. Verifique os buckets "signatures" e "contracts" no Supabase.';
       } else if (msg.includes('row-level security') || msg.includes('policy')) {
-        alert('Permissão negada no servidor. Configure as políticas de Storage e INSERT no Supabase.');
-      } else {
-        alert(`Erro ao finalizar aluguel: ${msg}`);
+        userMsg =
+          'Permissão negada no servidor. Configure as políticas de Storage e INSERT no Supabase.';
       }
+      setSubmitFeedback(userMsg);
+      showAlert(userMsg);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFinalizePress = () => {
+    if (!product) {
+      showAlert('Aguarde o carregamento do produto e tente novamente.');
+      return;
+    }
+    handleSubmit(onSubmit, onValidationError)();
   };
 
   return (
@@ -177,7 +222,7 @@ export default function ContractPage() {
       <Stack.Screen options={{ title: 'Contrato' }} />
       <Header />
       
-      <ScrollView className="flex-1 px-6 pt-6">
+      <ScrollView ref={scrollRef} className="flex-1 px-6 pt-6">
         <View className="mb-8">
           <Text className="text-2xl font-bold text-slate-900 mb-2">Dados do Contrato</Text>
           <Text className="text-slate-500">Preencha suas informações para gerar o contrato de locação.</Text>
@@ -188,7 +233,7 @@ export default function ContractPage() {
             control={control}
             name="nome"
             render={({ field: { onChange, value } }) => (
-              <Input label="Nome Completo" value={value} onChangeText={onChange} error={errors.nome?.message} />
+              <Input label="Nome Completo" value={value ?? ''} onChangeText={onChange} error={errors.nome?.message} />
             )}
           />
 
@@ -196,7 +241,7 @@ export default function ContractPage() {
             control={control}
             name="cpf"
             render={({ field: { onChange, value } }) => (
-              <Input label="CPF" value={value} onChangeText={onChange} error={errors.cpf?.message} />
+              <Input label="CPF" value={value ?? ''} onChangeText={onChange} error={errors.cpf?.message} />
             )}
           />
 
@@ -207,14 +252,14 @@ export default function ContractPage() {
               control={control}
               name="telefone"
               render={({ field: { onChange, value } }) => (
-                <Input label="Telefone/WhatsApp" value={value} onChangeText={onChange} error={errors.telefone?.message} containerClassName="flex-1" />
+                <Input label="Telefone/WhatsApp" value={value ?? ''} onChangeText={onChange} error={errors.telefone?.message} containerClassName="flex-1" />
               )}
             />
             <Controller
               control={control}
               name="email"
               render={({ field: { onChange, value } }) => (
-                <Input label="Email" value={value} onChangeText={onChange} error={errors.email?.message} containerClassName="flex-1" />
+                <Input label="Email" value={value ?? ''} onChangeText={onChange} error={errors.email?.message} containerClassName="flex-1" />
               )}
             />
           </View>
@@ -236,7 +281,11 @@ export default function ContractPage() {
           />
         </View>
 
-        <View className="mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+        <View
+          className={`mb-8 p-6 rounded-3xl border ${
+            documentError ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-100'
+          }`}
+        >
           <Text className="text-lg font-bold text-slate-900 mb-2">Documento com Foto</Text>
           <Text className="text-xs text-slate-500 mb-4">
             Envie uma foto legível do seu documento de identidade (CNH ou outro documento com foto) para validação do contrato.
@@ -265,6 +314,8 @@ export default function ContractPage() {
                   const reader = new FileReader();
                   reader.onload = (event) => {
                     setDocumentImage(event.target?.result as string);
+                    setDocumentError(null);
+                    setSubmitFeedback(null);
                   };
                   reader.readAsDataURL(file);
                 };
@@ -281,18 +332,31 @@ export default function ContractPage() {
               </View>
             </TouchableOpacity>
           )}
-          {documentImage && <Text className="mt-2 text-xs text-green-600 font-medium text-center">✓ Documento carregado com sucesso!</Text>}
+          {documentImage && (
+            <Text className="mt-2 text-xs text-green-600 font-medium text-center">
+              ✓ Documento carregado com sucesso!
+            </Text>
+          )}
+          {documentError && (
+            <Text className="mt-2 text-xs text-red-600 font-medium text-center">{documentError}</Text>
+          )}
         </View>
 
         <View className="h-20" />
       </ScrollView>
 
       <View className="px-6 py-6 border-t border-slate-100 bg-white">
-        <Button 
-          label="Finalizar Aluguel" 
-          onPress={handleSubmit(onSubmit)}
+        {submitFeedback && (
+          <View className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+            <Text className="text-sm text-amber-900">{submitFeedback}</Text>
+          </View>
+        )}
+        <Button
+          label="Finalizar Aluguel"
+          onPress={handleFinalizePress}
           isLoading={isSubmitting}
           className="h-14"
+          accessibilityRole="button"
         />
       </View>
     </View>
