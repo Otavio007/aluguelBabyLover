@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { pdf } from '@react-pdf/renderer';
 import { Camera, Trash2 } from 'lucide-react-native';
 
 import { Header } from '@/components/layout/Header';
@@ -15,7 +14,7 @@ import { useProduct } from '@/hooks/useProducts';
 import { reservationsService } from '@/services/reservationsService';
 import { contractsService } from '@/services/contractsService';
 import { uploadService } from '@/services/uploadService';
-import { ContractPdf } from '@/services/ContractPdf';
+import { generateContractPdf } from '@/services/generateContractPdf';
 
 const schema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
@@ -86,34 +85,30 @@ export default function ContractPage() {
       // 2. Upload Document Photo
       const documentoUrl = await uploadService.uploadDocument(reservation.id, documentImage);
 
-      // 3. Generate and Upload PDF (opcional — não bloqueia o aluguel)
+      // 3. PDF só no app nativo (web não usa @react-pdf — evita erro de módulo)
       let pdfUrl: string | null = null;
-      try {
-        const pdfClientData = {
-          id: '',
-          reservation_id: reservation.id,
-          nome: data.nome,
-          cpf: data.cpf,
-          endereco: data.endereco,
-          cidade: data.cidade,
-          estado: data.estado,
-          cep: data.cep,
-          telefone: data.telefone,
-          email: data.email,
-        };
+      const pdfClientData = {
+        id: '',
+        reservation_id: reservation.id,
+        nome: data.nome,
+        cpf: data.cpf,
+        endereco: data.endereco,
+        cidade: data.cidade,
+        estado: data.estado,
+        cep: data.cep,
+        telefone: data.telefone,
+        email: data.email,
+      };
 
-        const blob = await pdf(
-          <ContractPdf
-            clientData={pdfClientData}
-            reservation={reservation}
-            product={product!}
-            documentoUrl={documentoUrl}
-          />
-        ).toBlob();
+      const pdfBlob = await generateContractPdf({
+        clientData: pdfClientData,
+        reservation,
+        product: product!,
+        documentoUrl,
+      });
 
-        pdfUrl = await uploadService.uploadContractPdf(reservation.id, blob);
-      } catch (pdfError) {
-        console.warn('PDF não gerado, reserva será salva sem arquivo PDF:', pdfError);
+      if (pdfBlob) {
+        pdfUrl = await uploadService.uploadContractPdf(reservation.id, pdfBlob);
       }
 
       // 4. Create Contract and Client Data records

@@ -52,20 +52,20 @@ export const getProductRules = (product: any): Rule[] => {
  * and the JSON structures used as fallbacks for multiple rules.
  */
 export const getProductDescription = (product: any): string => {
-  if (!product) return '';
-  if (product.descricao) {
-    const trimmed = product.descricao.trim();
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === 'object' && typeof parsed.descricao === 'string') {
-          return parsed.descricao;
-        }
-      } catch (e) {
-        // Fallback
+  if (!product?.descricao) return '';
+
+  const trimmed = String(product.descricao).trim();
+
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object' && typeof parsed.descricao === 'string') {
+        return parsed.descricao;
       }
+    } catch {
+      // texto livre que começa com "{" — usa como está
     }
-    return product.descricao;
   }
-  return '';
+
+  return trimmed;
 };

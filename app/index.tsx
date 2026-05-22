@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { Search, Filter, Package } from 'lucide-react-native';
 import { useProducts } from '@/hooks/useProducts';
 import { ProductCard } from '@/components/product/ProductCard';
+import { getProductDescription } from '@/utils/rulesHelper';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 
@@ -15,8 +16,10 @@ export default function Home() {
   const { data: products, isLoading } = useProducts();
 
   const filteredProducts = products?.filter(p => {
-    const matchesSearch = p.nome.toLowerCase().includes(search.toLowerCase()) || 
-                         p.descricao.toLowerCase().includes(search.toLowerCase());
+    const desc = getProductDescription(p).toLowerCase();
+    const matchesSearch =
+      p.nome.toLowerCase().includes(search.toLowerCase()) ||
+      desc.includes(search.toLowerCase());
     const matchesCategory = category === 'Todos' || p.categoria === category;
     return matchesSearch && matchesCategory;
   });

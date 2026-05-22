@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
 import { Product } from '@/types';
 import { getFirstProductImage } from '@/utils/imageHelper';
+import { getProductDescription } from '@/utils/rulesHelper';
 
 interface ProductCardProps {
   product: Product;
@@ -35,7 +36,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           </View>
           
           <Text className="text-slate-500 text-sm mb-4" numberOfLines={2}>
-            {product.descricao}
+            {getProductDescription(product)}
           </Text>
           
           <View className="flex-row items-center justify-between border-t border-slate-50 pt-4">

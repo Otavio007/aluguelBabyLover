@@ -23,8 +23,11 @@ Sistema completo de locação de produtos infantis com foco em experiência web 
    - `product-images` (Acesso público)
    - `contracts` (Acesso público para este MVP)
    - `signatures` (Acesso público para este MVP)
-4. Execute também `supabase/storage-policies.sql` no SQL Editor (permite upload de documentos e PDFs pelo site).
+4. Execute `supabase/fix-permissions.sql` no SQL Editor (obrigatório para o site finalizar aluguéis sem login).
 5. Copie suas credenciais (URL e Anon Key) do painel de configurações da API.
+
+### Erro "Permissão negada no servidor"
+Execute `supabase/fix-permissions.sql` e confira no Supabase **Storage** se existem os buckets `signatures` e `contracts` (pode marcar como públicos).
 
 ## Instalação Local
 1. Clone o repositório ou baixe os arquivos.

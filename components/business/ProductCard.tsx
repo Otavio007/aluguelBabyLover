@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Product } from '@/types';
 import { cn } from '@/utils/cn';
 import { getFirstProductImage } from '@/utils/imageHelper';
+import { getProductDescription } from '@/utils/rulesHelper';
 
 interface ProductCardProps {
   product: Product;
@@ -41,7 +42,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </Text>
         
         <Text className="text-sm text-slate-500 mb-3" numberOfLines={2}>
-          {product.descricao}
+          {getProductDescription(product)}
         </Text>
         
         <View className="flex-row items-end justify-between">

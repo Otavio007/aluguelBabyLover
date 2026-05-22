@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { Product, ContractClientData, Reservation } from '@/types';
 
 const styles = StyleSheet.create({
@@ -15,7 +15,6 @@ const styles = StyleSheet.create({
   terms: { marginTop: 30, fontSize: 8, color: '#64748b', textAlign: 'justify' },
   signatureSection: { marginTop: 50, flexDirection: 'row', justifyContent: 'center' },
   signatureBox: { borderTop: '1pt solid #cbd5e1', width: 250, paddingTop: 10, alignItems: 'center' },
-  signatureImage: { width: 150, height: 60, marginBottom: 5 }
 });
 
 interface ContractPdfProps {
@@ -25,7 +24,7 @@ interface ContractPdfProps {
   documentoUrl?: string;
 }
 
-export const ContractPdf = ({ clientData, reservation, product, documentoUrl }: ContractPdfProps) => (
+export const ContractPdf = ({ clientData, reservation, product }: ContractPdfProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
@@ -74,7 +73,10 @@ export const ContractPdf = ({ clientData, reservation, product, documentoUrl }: 
       </View>
 
       <View style={styles.terms}>
-        <Text>Termos e Condições: O locatário declara estar recebendo o equipamento em perfeitas condições de uso e limpeza. Compromete-se a devolver o produto na data e horário estipulados, sob pena de multa diária. Em caso de danos parciais ou totais, o locatário arcará com os custos de reparo ou reposição del bien conforme valor de mercado.</Text>
+        <Text>
+          Termos e Condições: O locatário declara estar recebendo o equipamento em perfeitas condições de uso e limpeza.
+          Compromete-se a devolver o produto na data e horário estipulados, sob pena de multa diária.
+        </Text>
       </View>
 
       <View style={styles.signatureSection}>

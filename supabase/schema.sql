@@ -80,14 +80,14 @@ CREATE POLICY "Admin Update Access" ON products FOR UPDATE USING (auth.role() = 
 CREATE POLICY "Admin Delete Access" ON products FOR DELETE USING (auth.role() = 'authenticated');
 
 -- Reservations & Contracts: Public can create, but only Admin can see all
-CREATE POLICY "Public Create Reservation" ON reservations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Create Reservation" ON reservations FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Admin Read Reservations" ON reservations FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Update Reservations" ON reservations FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Public Create Contract" ON contracts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Create Contract" ON contracts FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Admin Read Contracts" ON contracts FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Public Create Client Data" ON contract_client_data FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Create Client Data" ON contract_client_data FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Admin Read Client Data" ON contract_client_data FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Update trigger for updated_at
@@ -124,7 +124,8 @@ WITH CHECK (bucket_id = 'contracts');
 CREATE POLICY "Public update contracts bucket"
 ON storage.objects FOR UPDATE
 TO anon, authenticated
-USING (bucket_id = 'contracts');
+USING (bucket_id = 'contracts')
+WITH CHECK (bucket_id = 'contracts');
 
 CREATE POLICY "Public read signatures bucket"
 ON storage.objects FOR SELECT
@@ -139,4 +140,5 @@ WITH CHECK (bucket_id = 'signatures');
 CREATE POLICY "Public update signatures bucket"
 ON storage.objects FOR UPDATE
 TO anon, authenticated
-USING (bucket_id = 'signatures');
+USING (bucket_id = 'signatures')
+WITH CHECK (bucket_id = 'signatures');
