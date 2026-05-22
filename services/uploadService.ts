@@ -23,6 +23,29 @@ export const uploadService = {
     return publicUrlData.publicUrl;
   },
 
+  async uploadDocument(reservationId: string, base64Image: string) {
+    const parts = base64Image.split(',');
+    const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const base64 = parts[1];
+    const extension = mime.split('/')[1] || 'png';
+    const fileName = `${reservationId}/document.${extension}`;
+
+    const { data, error } = await supabase.storage
+      .from('signatures')
+      .upload(fileName, decode(base64), {
+        contentType: mime,
+        upsert: true,
+      });
+
+    if (error) throw error;
+    
+    const { data: publicUrlData } = supabase.storage
+      .from('signatures')
+      .getPublicUrl(fileName);
+
+    return publicUrlData.publicUrl;
+  },
+
   async uploadContractPdf(reservationId: string, pdfBlob: Blob) {
     const fileName = `${reservationId}/contract.pdf`;
 

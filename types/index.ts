@@ -41,7 +41,8 @@ export interface Contract {
   id: string;
   reservation_id: string;
   pdf_url: string;
-  assinatura_url: string;
+  assinatura_url?: string;
+  documento_url?: string;
   observacoes: string;
   created_at: string;
 }

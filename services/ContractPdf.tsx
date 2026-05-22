@@ -22,10 +22,10 @@ interface ContractPdfProps {
   clientData: ContractClientData;
   reservation: Reservation;
   product: Product;
-  signatureUrl: string;
+  documentoUrl?: string;
 }
 
-export const ContractPdf = ({ clientData, reservation, product, signatureUrl }: ContractPdfProps) => (
+export const ContractPdf = ({ clientData, reservation, product, documentoUrl }: ContractPdfProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
@@ -78,12 +78,17 @@ export const ContractPdf = ({ clientData, reservation, product, signatureUrl }: 
       </View>
 
       <View style={styles.terms}>
-        <Text>Termos e Condições: O locatário declara estar recebendo o equipamento em perfeitas condições de uso e limpeza. Compromete-se a devolver o produto na data e horário estipulados, sob pena de multa diária. Em caso de danos parciais ou totais, o locatário arcará com os custos de reparo ou reposição do bem conforme valor de mercado.</Text>
+        <Text>Termos e Condições: O locatário declara estar recebendo o equipamento em perfeitas condições de uso e limpeza. Compromete-se a devolver o produto na data e horário estipulados, sob pena de multa diária. Em caso de danos parciais ou totais, o locatário arcará com os custos de reparo ou reposição del bien conforme valor de mercado.</Text>
       </View>
 
       <View style={styles.signatureSection}>
         <View style={styles.signatureBox}>
-          {signatureUrl && <Image src={signatureUrl} style={styles.signatureImage} />}
+          <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>
+            ACEITO E ASSINADO ELETRONICAMENTE
+          </Text>
+          <Text style={{ fontSize: 7, color: '#64748b', marginBottom: 12 }}>
+            Autenticado via upload de documento com foto.
+          </Text>
           <Text>{clientData.nome}</Text>
           <Text style={{ fontSize: 8, color: '#94a3b8' }}>CPF: {clientData.cpf}</Text>
         </View>

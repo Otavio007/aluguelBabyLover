@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { pdf } from '@react-pdf/renderer';
+import { Camera, Trash2 } from 'lucide-react-native';
 
 import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { SignaturePad } from '@/components/business/SignaturePad';
 import { useProduct } from '@/hooks/useProducts';
 import { reservationsService } from '@/services/reservationsService';
 import { contractsService } from '@/services/contractsService';
@@ -42,7 +42,7 @@ export default function ContractPage() {
   
   const router = useRouter();
   const { data: product } = useProduct(id!);
-  const [signature, setSignature] = useState<string | null>(null);
+  const [documentImage, setDocumentImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -50,8 +50,8 @@ export default function ContractPage() {
   });
 
   const onSubmit = async (data: FormData) => {
-    if (!signature) {
-      alert('Por favor, assine o contrato antes de finalizar.');
+    if (!documentImage) {
+      alert('Por favor, envie a foto do seu documento antes de finalizar.');
       return;
     }
 
@@ -76,8 +76,8 @@ export default function ContractPage() {
         valor_total: product!.valor * calculatedDays,
       });
 
-      // 2. Upload Signature
-      const signatureUrl = await uploadService.uploadSignature(reservation.id, signature);
+      // 2. Upload Document Photo
+      const documentoUrl = await uploadService.uploadDocument(reservation.id, documentImage);
 
       // 3. Generate and Upload PDF
       const pdfClientData = {
@@ -99,19 +99,32 @@ export default function ContractPage() {
           clientData={pdfClientData} 
           reservation={reservation} 
           product={product!} 
-          signatureUrl={signature} 
+          documentoUrl={documentoUrl} 
         />
       ).toBlob();
       
       const pdfUrl = await uploadService.uploadContractPdf(reservation.id, blob);
 
       // 4. Create Contract and Client Data records
-      await contractsService.createContract({
+      const contractPayload: any = {
         reservation_id: reservation.id,
         pdf_url: pdfUrl,
-        assinatura_url: signatureUrl,
+        assinatura_url: documentoUrl, // Fallback to store doc image url in signature_url
+        documento_url: documentoUrl,
         observacoes: data.observacoes || '',
-      });
+      };
+
+      try {
+        await contractsService.createContract(contractPayload);
+      } catch (err: any) {
+        // Fallback in case column 'documento_url' does not exist in db yet
+        if (err.code === '42703' || err.message?.includes('documento_url')) {
+          const { documento_url, ...retryPayload } = contractPayload;
+          await contractsService.createContract(retryPayload);
+        } else {
+          throw err;
+        }
+      }
 
       await contractsService.createClientData({
         ...data,
@@ -225,10 +238,52 @@ export default function ContractPage() {
           />
         </View>
 
-        <View className="mb-8">
-          <Text className="text-lg font-bold text-slate-900 mb-4">Assinatura Digital</Text>
-          <SignaturePad onOK={(sig) => setSignature(sig)} />
-          {signature && <Text className="mt-2 text-xs text-green-600 font-medium">✓ Assinatura capturada com sucesso!</Text>}
+        <View className="mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+          <Text className="text-lg font-bold text-slate-900 mb-2">Documento com Foto</Text>
+          <Text className="text-xs text-slate-500 mb-4">
+            Envie uma foto legível do seu documento de identidade (RG ou CNH) para validação do contrato.
+          </Text>
+          
+          {documentImage ? (
+            <View className="mb-4 relative rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 aspect-[4/3] max-w-sm mx-auto w-full">
+              <Image source={{ uri: documentImage }} className="w-full h-full" resizeMode="contain" />
+              <TouchableOpacity
+                onPress={() => setDocumentImage(null)}
+                className="absolute top-2 right-2 bg-red-500 rounded-full p-2 shadow-md"
+              >
+                <Trash2 size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              onPress={async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e: any) => {
+                  const file = e.target.files?.[0] as File;
+                  if (!file) return;
+                  
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    setDocumentImage(event.target?.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                };
+                input.click();
+              }}
+              className="w-full aspect-[16/9] bg-white rounded-2xl border-2 border-dashed border-slate-200 items-center justify-center shadow-sm"
+            >
+              <View className="items-center px-4">
+                <View className="p-3 bg-primary-50 rounded-full mb-3">
+                  <Camera size={24} color="#0284c7" />
+                </View>
+                <Text className="text-slate-800 font-bold text-sm text-center">Tirar Foto ou Enviar Imagem</Text>
+                <Text className="text-slate-400 text-xs text-center mt-1">Formatos aceitos: JPG, PNG</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          {documentImage && <Text className="mt-2 text-xs text-green-600 font-medium text-center">✓ Documento carregado com sucesso!</Text>}
         </View>
 
         <View className="h-20" />
