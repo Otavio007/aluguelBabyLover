@@ -45,9 +45,42 @@ export default function ContractPage() {
   const [documentImage, setDocumentImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  const handleFetchCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (data.erro) {
+        return;
+      }
+
+      if (data.logradouro) {
+        const fullAddress = data.bairro 
+          ? `${data.logradouro} - ${data.bairro}`
+          : data.logradouro;
+        setValue('endereco', fullAddress, { shouldValidate: true });
+      } else if (data.bairro) {
+        setValue('endereco', data.bairro, { shouldValidate: true });
+      }
+      
+      if (data.localidade) {
+        setValue('cidade', data.localidade, { shouldValidate: true });
+      }
+      
+      if (data.uf) {
+        setValue('estado', data.uf, { shouldValidate: true });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    }
+  };
 
   const onSubmit = async (data: FormData) => {
     if (!documentImage) {
@@ -206,8 +239,38 @@ export default function ContractPage() {
             <Controller
               control={control}
               name="cep"
-              render={({ field: { onChange, value } }) => (
-                <Input label="CEP" value={value} onChangeText={onChange} error={errors.cep?.message} containerClassName="w-32" />
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input 
+                  label="CEP" 
+                  value={value} 
+                  onChangeText={(val) => {
+                    // Apply CEP mask format (XXXXX-XXX) dynamically
+                    const cleaned = val.replace(/\D/g, '');
+                    let formatted = cleaned;
+                    if (cleaned.length > 5) {
+                      formatted = `${cleaned.substring(0, 5)}-${cleaned.substring(5, 8)}`;
+                    }
+                    onChange(formatted);
+                    
+                    if (cleaned.length === 8) {
+                      handleFetchCep(cleaned);
+                    }
+                  }} 
+                  onBlur={() => {
+                    onBlur();
+                    if (value) {
+                      const cleaned = value.replace(/\D/g, '');
+                      if (cleaned.length === 8) {
+                        handleFetchCep(cleaned);
+                      }
+                    }
+                  }}
+                  error={errors.cep?.message} 
+                  containerClassName="w-32" 
+                  keyboardType="numeric"
+                  maxLength={9}
+                  placeholder="00000-000"
+                />
               )}
             />
           </View>
