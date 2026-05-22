@@ -135,7 +135,7 @@ export default function ContractPage() {
         }
       }
 
-      await contractsService.createClientData({
+      const clientDataPayload = {
         reservation_id: reservation.id,
         nome: data.nome,
         cpf: data.cpf,
@@ -145,7 +145,19 @@ export default function ContractPage() {
         cep: data.cep,
         telefone: data.telefone,
         email: data.email,
-      });
+        observacoes: data.observacoes?.trim() || null,
+      };
+
+      try {
+        await contractsService.createClientData(clientDataPayload);
+      } catch (err: any) {
+        if (err.code === '42703' || err.message?.includes('observacoes')) {
+          const { observacoes, ...withoutObservacoes } = clientDataPayload;
+          await contractsService.createClientData(withoutObservacoes);
+        } else {
+          throw err;
+        }
+      }
 
       // 5. Success
       alert('Aluguel finalizado com sucesso! O contrato foi gerado e salvo.');
@@ -216,7 +228,15 @@ export default function ContractPage() {
             control={control}
             name="observacoes"
             render={({ field: { onChange, value } }) => (
-              <Input label="Observações" value={value} onChangeText={onChange} multiline numberOfLines={3} className="h-24" />
+              <Input
+                label="Observações"
+                value={value ?? ''}
+                onChangeText={onChange}
+                multiline
+                numberOfLines={4}
+                className="h-28"
+                placeholder="Informações adicionais sobre a locação (opcional)"
+              />
             )}
           />
         </View>

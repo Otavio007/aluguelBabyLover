@@ -58,4 +58,5 @@ export interface ContractClientData {
   cep: string;
   telefone: string;
   email: string;
+  observacoes?: string | null;
 }

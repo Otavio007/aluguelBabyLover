@@ -24,7 +24,7 @@ export default function AdminRentals() {
           *,
           product:products(nome, imagem),
           client:contract_client_data(*),
-          contract:contracts(pdf_url)
+          contract:contracts(pdf_url, observacoes)
         `)
         .order('created_at', { ascending: false });
 
@@ -86,7 +86,18 @@ export default function AdminRentals() {
         )}
         <TouchableOpacity 
           className="flex-1 bg-slate-50 py-3 rounded-xl flex-row items-center justify-center"
-          onPress={() => alert('Dados do cliente:\n' + JSON.stringify(item.client?.[0], null, 2))}
+          onPress={() => {
+            const client = item.client?.[0];
+            const obs = client?.observacoes || item.contract?.[0]?.observacoes;
+            const lines = [
+              client ? `Nome: ${client.nome}` : '',
+              client ? `CPF: ${client.cpf}` : '',
+              client ? `Telefone: ${client.telefone}` : '',
+              client ? `Email: ${client.email}` : '',
+              obs ? `\nObservações:\n${obs}` : '\nObservações: (nenhuma)',
+            ].filter(Boolean);
+            alert(lines.join('\n'));
+          }}
         >
           <ExternalLink size={16} color="#475569" className="mr-2" />
           <Text className="text-slate-700 font-bold text-sm">Detalhes</Text>

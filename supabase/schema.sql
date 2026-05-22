@@ -61,6 +61,7 @@ CREATE TABLE contract_client_data (
   cep TEXT NOT NULL,
   telefone TEXT NOT NULL,
   email TEXT NOT NULL,
+  observacoes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
