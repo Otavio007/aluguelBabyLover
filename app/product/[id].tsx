@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ChevronLeft, Share2, Heart, ShieldCheck, Clock, CheckCircle2 } from 'lucide-react-native';
+import { ChevronLeft, Share2, CheckCircle2, Check } from 'lucide-react-native';
 import { useProduct } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/Button';
 import { Header } from '@/components/layout/Header';
@@ -16,6 +16,30 @@ export default function ProductDetails() {
   const { width: windowWidth } = useWindowDimensions();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined'
+      ? window.location.href
+      : `https://aluguelbabylover.netlify.app/product/${id}`;
+    const title = product?.nome ?? 'Produto BabyLover';
+    const text = `Confira este produto para locação: ${title}`;
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title, text, url });
+      } else {
+        // Fallback: copiar link no clipboard
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(url);
+        }
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } catch (_) {
+      // usuário cancelou o share — ignorar
+    }
+  };
 
   const images = getProductImages(product?.imagem);
 
@@ -98,11 +122,17 @@ export default function ProductDetails() {
             </TouchableOpacity>
           </View>
           <View className="absolute top-4 right-4 flex-row space-x-2 z-10">
-            <TouchableOpacity className="p-2 bg-white/80 rounded-full shadow-sm">
-              <Share2 size={20} color="#0f172a" />
-            </TouchableOpacity>
-            <TouchableOpacity className="p-2 bg-white/80 rounded-full shadow-sm">
-              <Heart size={20} color="#0f172a" />
+            <TouchableOpacity
+              onPress={handleShare}
+              className="flex-row items-center gap-1.5 px-3 py-2 bg-white/90 rounded-full shadow-sm"
+              activeOpacity={0.8}
+            >
+              {shareCopied
+                ? <Check size={16} color={BRAND.primaryDark} />
+                : <Share2 size={16} color="#0f172a" />}
+              <Text className="text-xs font-bold text-slate-800">
+                {shareCopied ? 'Link copiado!' : 'Compartilhar'}
+              </Text>
             </TouchableOpacity>
           </View>
 
