@@ -13,6 +13,7 @@ import { getProductImages, getFirstProductImage } from '@/utils/imageHelper';
 import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
 import { getProductDevolucaoDias, getProductEntregaHoraInicio, getProductEntregaHoraFim } from '@/utils/schedulingHelper';
 import { useNewRentalsCount } from '@/hooks/useNewRentalsCount';
+import { BRAND } from '@/constants/brand';
 
 export default function AdminProducts() {
   const { data: products, isLoading, refetch } = useProducts();
@@ -224,7 +225,7 @@ export default function AdminProducts() {
               newCount > 0 ? `Contratos, ${newCount} aluguéis novos` : 'Contratos'
             }
           >
-            <FileText size={20} color={newCount > 0 ? '#0284c7' : '#475569'} />
+            <FileText size={20} color={newCount > 0 ? BRAND.primary : '#475569'} />
             {newCount > 0 && (
               <View className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full items-center justify-center border-2 border-white">
                 <Text className="text-[10px] font-bold text-white">

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, Image } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Lock } from 'lucide-react-native';
+import { LOGO } from '@/constants/brand';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -36,14 +36,16 @@ export default function AdminLogin() {
   };
 
   return (
-    <View className="flex-1 bg-slate-50 items-center justify-center px-6">
+    <View className="flex-1 bg-primary-50 items-center justify-center px-6">
       <Stack.Screen options={{ title: 'Login Administrativo' }} />
       
-      <View className="w-full max-w-md bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+      <View className="w-full max-w-md bg-white p-8 rounded-3xl shadow-card border border-primary-100">
         <View className="items-center mb-8">
-          <View className="p-4 bg-primary-100 rounded-full mb-4">
-            <Lock size={32} color="#0284c7" />
-          </View>
+          <Image
+            source={LOGO}
+            className="h-16 w-44 mb-4"
+            resizeMode="contain"
+          />
           <Text className="text-2xl font-bold text-slate-900">Painel Admin</Text>
           <Text className="text-slate-500">Acesse para gerenciar o sistema</Text>
         </View>

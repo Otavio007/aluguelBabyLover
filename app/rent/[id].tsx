@@ -15,6 +15,7 @@ import {
   isValidReturnDate, 
   generateTimeSlots 
 } from '@/utils/schedulingHelper';
+import { BRAND } from '@/constants/brand';
 
 export default function RentScheduling() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -265,7 +266,7 @@ export default function RentScheduling() {
         </View>
 
         <View className="bg-primary-50 p-4 rounded-2xl mb-6 flex-row items-center">
-          <Info size={20} color="#0284c7" />
+          <Info size={20} color={BRAND.primary} />
           <Text className="ml-3 text-xs text-primary-700 flex-1 leading-relaxed">
             O período mínimo de locação é de 3 dias. Devoluções permitidas somente em: <Text className="font-bold">{getProductDevolucaoDias(product).join(', ')}</Text>.
           </Text>
@@ -275,7 +276,7 @@ export default function RentScheduling() {
           {/* Pickup Section */}
           <View className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <Text className="text-sm font-bold text-slate-800 mb-3 flex-row items-center">
-              <CalendarIcon size={16} color="#0284c7" className="mr-2" /> Retirada (Entrega)
+              <CalendarIcon size={16} color={BRAND.primary} className="mr-2" /> Retirada (Entrega)
             </Text>
             <View className="flex-row space-x-3">
               <TouchableOpacity
@@ -301,7 +302,7 @@ export default function RentScheduling() {
           {/* Return Section */}
           <View className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-4">
             <Text className="text-sm font-bold text-slate-800 mb-3 flex-row items-center">
-              <Clock size={16} color="#0284c7" className="mr-2" /> Devolução (Coleta)
+              <Clock size={16} color={BRAND.primary} className="mr-2" /> Devolução (Coleta)
             </Text>
             <View className="flex-row space-x-3">
               <TouchableOpacity

@@ -19,6 +19,7 @@ import {
   ContractFormData,
   getFormErrorMessages,
 } from '@/utils/formValidators';
+import { BRAND } from '@/constants/brand';
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -325,7 +326,7 @@ export default function ContractPage() {
             >
               <View className="items-center px-4">
                 <View className="p-3 bg-primary-50 rounded-full mb-3">
-                  <Camera size={24} color="#0284c7" />
+                  <Camera size={24} color={BRAND.primary} />
                 </View>
                 <Text className="text-slate-800 font-bold text-sm text-center">Tirar Foto ou Enviar Imagem</Text>
                 <Text className="text-slate-400 text-xs text-center mt-1">Formatos aceitos: JPG, PNG</Text>

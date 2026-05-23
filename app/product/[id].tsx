@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Header } from '@/components/layout/Header';
 import { getProductImages } from '@/utils/imageHelper';
 import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
+import { BRAND } from '@/constants/brand';
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function ProductDetails() {
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#0284c7" />
+        <ActivityIndicator size="large" color={BRAND.primary} />
       </View>
     );
   }
@@ -168,7 +169,7 @@ export default function ProductDetails() {
             <View className="space-y-4">
               {getProductRules(product).map((rule, idx) => (
                 <View key={idx} className="flex-row items-start space-x-3">
-                  <CheckCircle2 size={20} color="#0284c7" />
+                  <CheckCircle2 size={20} color={BRAND.primary} />
                   <View className="flex-1">
                     <Text className="text-sm font-bold text-slate-900">{rule.titulo}</Text>
                     <Text className="text-xs text-slate-500">{rule.texto}</Text>

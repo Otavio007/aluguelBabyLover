@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDbDate } from '@/utils/dateHelper';
 import { setLastSeenRentalsAt } from '@/utils/adminRentalsSeen';
 import { Reservation } from '@/types';
+import { BRAND } from '@/constants/brand';
 import { useFocusEffect } from '@react-navigation/native';
 
 type RentalRow = Reservation & {
@@ -119,7 +120,7 @@ export default function AdminRentals() {
               onPress={() => Linking.openURL(contract.pdf_url!)}
               className="flex-1 bg-primary-50 py-3 rounded-xl flex-row items-center justify-center"
             >
-              <FileText size={16} color="#0284c7" className="mr-2" />
+              <FileText size={16} color={BRAND.primary} className="mr-2" />
               <Text className="text-primary-700 font-bold text-sm">Contrato</Text>
             </TouchableOpacity>
           ) : null}

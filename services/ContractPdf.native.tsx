@@ -5,7 +5,7 @@ import { Product, ContractClientData, Reservation } from '@/types';
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: '#1e293b' },
   header: { marginBottom: 30, textAlign: 'center' },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: '#0284c7' },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: '#ee76d2' },
   subtitle: { fontSize: 12, color: '#64748b', marginBottom: 20 },
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 12, fontWeight: 'bold', borderBottom: '1pt solid #e2e8f0', paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase' },

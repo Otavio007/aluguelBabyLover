@@ -17,7 +17,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => router.push(`/product/${product.id}`)}
-      className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm mb-4"
+      className="bg-white rounded-2xl overflow-hidden border border-primary-100 shadow-card mb-4"
     >
       <Image
         source={{ uri: getFirstProductImage(product.imagem) }}
@@ -53,8 +53,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             </Text>
           </View>
           
-          <View className="bg-primary-50 px-3 py-1.5 rounded-lg">
-            <Text className="text-primary-700 font-semibold text-xs">Ver mais</Text>
+          <View className="bg-primary-500 px-3 py-1.5 rounded-xl">
+            <Text className="text-white font-semibold text-xs">Ver mais</Text>
           </View>
         </View>
       </View>
