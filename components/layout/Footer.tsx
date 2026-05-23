@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Linking, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LOGO } from '@/constants/brand';
+import { LOGO, BRAND } from '@/constants/brand';
+import { useSocialLinks } from '@/hooks/useSocialLinks';
+import { ExternalLink } from 'lucide-react-native';
 
 export const Footer = () => {
   const router = useRouter();
+  const { data: socialLinks, isLoading } = useSocialLinks();
 
   return (
     <View className="bg-secondary-900 px-6 py-12 border-t-4 border-primary-500">
@@ -20,17 +23,31 @@ export const Footer = () => {
         </Text>
       </View>
 
-      <View className="flex-row flex-wrap gap-4 mb-10">
-        <TouchableOpacity>
-          <Text className="text-primary-300 font-semibold text-sm">Instagram</Text>
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Text className="text-primary-300 font-semibold text-sm">Facebook</Text>
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Text className="text-primary-300 font-semibold text-sm">E-mail</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Redes Sociais Dinâmicas */}
+      {isLoading ? (
+        <ActivityIndicator size="small" color={BRAND.primary} className="mb-10" />
+      ) : socialLinks && socialLinks.length > 0 ? (
+        <View className="mb-10">
+          <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">
+            Redes Sociais
+          </Text>
+          <View className="flex-row flex-wrap gap-3">
+            {socialLinks.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => {
+                  if (item.link) Linking.openURL(item.link);
+                }}
+                className="flex-row items-center bg-white/10 border border-primary-500/40 px-4 py-2.5 rounded-full gap-2"
+                activeOpacity={0.75}
+              >
+                <ExternalLink size={12} color={BRAND.primaryMuted} />
+                <Text className="text-primary-300 font-semibold text-sm">{item.texto}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View className="h-px bg-secondary-700 w-full mb-8" />
 

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Plus, Edit2, Trash2, Package, LogOut, FileText, Key } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, Package, LogOut, FileText, Key, Share2, ExternalLink } from 'lucide-react-native';
 import { useProducts } from '@/hooks/useProducts';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,7 @@ import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
 import { getProductDevolucaoDias, getProductEntregaHoraInicio, getProductEntregaHoraFim } from '@/utils/schedulingHelper';
 import { useNewRentalsCount } from '@/hooks/useNewRentalsCount';
 import { BRAND } from '@/constants/brand';
+import { settingsService, SocialLink } from '@/services/settingsService';
 
 export default function AdminProducts() {
   const { data: products, isLoading, refetch } = useProducts();
@@ -23,13 +24,68 @@ export default function AdminProducts() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newRuleTitle, setNewRuleTitle] = useState('');
   const [newRuleText, setNewRuleText] = useState('');
-   const router = useRouter();
- 
+  const router = useRouter();
+
   // State for changing password
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // State for social links
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [newSocialTexto, setNewSocialTexto] = useState('');
+  const [newSocialLink, setNewSocialLink] = useState('');
+  const [isSavingSocial, setIsSavingSocial] = useState(false);
+
+  const loadSocialLinks = async () => {
+    try {
+      const links = await settingsService.getSocialLinks();
+      setSocialLinks(links);
+    } catch (err: any) {
+      console.warn('Erro ao carregar redes sociais:', err.message);
+    }
+  };
+
+  const handleOpenSocialModal = async () => {
+    await loadSocialLinks();
+    setIsSocialModalOpen(true);
+  };
+
+  const handleAddSocialLink = () => {
+    if (!newSocialTexto.trim()) {
+      alert('Digite um texto para o link.');
+      return;
+    }
+    if (!newSocialLink.trim()) {
+      alert('Cole o link/URL da rede social.');
+      return;
+    }
+    setSocialLinks(prev => [
+      ...prev,
+      { texto: newSocialTexto.trim(), link: newSocialLink.trim() },
+    ]);
+    setNewSocialTexto('');
+    setNewSocialLink('');
+  };
+
+  const handleRemoveSocialLink = (index: number) => {
+    setSocialLinks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveSocialLinks = async () => {
+    setIsSavingSocial(true);
+    try {
+      await settingsService.saveSocialLinks(socialLinks);
+      alert('Redes sociais salvas com sucesso!');
+      setIsSocialModalOpen(false);
+    } catch (err: any) {
+      alert('Erro ao salvar: ' + err.message);
+    } finally {
+      setIsSavingSocial(false);
+    }
+  };
 
   const handleUpdatePassword = async () => {
     if (!newPassword || !confirmPassword) {
@@ -233,6 +289,13 @@ export default function AdminProducts() {
                 </Text>
               </View>
             )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleOpenSocialModal}
+            className="p-3 bg-primary-50 rounded-xl"
+            accessibilityLabel="Gerenciar redes sociais"
+          >
+            <Share2 size={20} color={BRAND.primary} />
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setIsPasswordModalOpen(true)}
@@ -634,6 +697,88 @@ export default function AdminProducts() {
             className="mt-4 h-12 bg-primary-600"
           />
         </View>
+      </Modal>
+
+      {/* Modal Redes Sociais */}
+      <Modal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
+        title="Redes Sociais"
+      >
+        <ScrollView className="max-h-[70vh]" showsVerticalScrollIndicator={false}>
+
+          {/* Links cadastrados */}
+          {socialLinks.length === 0 ? (
+            <View className="items-center py-6 mb-4">
+              <ExternalLink size={32} color="#cbd5e1" />
+              <Text className="text-slate-400 text-sm mt-3 text-center">
+                Nenhuma rede social cadastrada ainda.{`\n`}Adicione abaixo.
+              </Text>
+            </View>
+          ) : (
+            <View className="mb-4">
+              <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                Links cadastrados
+              </Text>
+              {socialLinks.map((item, index) => (
+                <View
+                  key={index}
+                  className="flex-row items-center bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 mb-2"
+                >
+                  <View className="flex-1 mr-3">
+                    <Text className="text-sm font-bold text-slate-800" numberOfLines={1}>
+                      {item.texto}
+                    </Text>
+                    <Text className="text-xs text-slate-400 mt-0.5" numberOfLines={1}>
+                      {item.link}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveSocialLink(index)}
+                    className="p-2 bg-red-50 rounded-xl"
+                  >
+                    <Trash2 size={16} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Formulário para adicionar */}
+          <View className="bg-primary-50 border border-primary-100 rounded-2xl p-4 mb-4">
+            <Text className="text-xs font-bold text-primary-700 uppercase tracking-wider mb-3">
+              Adicionar novo link
+            </Text>
+            <Input
+              label="Texto do botão"
+              placeholder="Ex: Siga nosso Instagram"
+              value={newSocialTexto}
+              onChangeText={setNewSocialTexto}
+              containerClassName="mb-3"
+            />
+            <Input
+              label="Link / URL"
+              placeholder="Ex: https://instagram.com/babylover"
+              value={newSocialLink}
+              onChangeText={setNewSocialLink}
+              containerClassName="mb-3"
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <Button
+              label="+ Adicionar"
+              onPress={handleAddSocialLink}
+              className="h-10 py-1 bg-primary-600"
+            />
+          </View>
+
+          <Button
+            label="Salvar Redes Sociais"
+            onPress={handleSaveSocialLinks}
+            isLoading={isSavingSocial}
+            className="mt-2 h-12"
+          />
+        </ScrollView>
       </Modal>
     </View>
   );
