@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 type RentalRow = Reservation & {
   product?: { nome: string; imagem?: string };
   client?: { nome: string; cpf: string; telefone: string; email: string; observacoes?: string | null } | { nome: string; cpf: string; telefone: string; email: string; observacoes?: string | null }[];
-  contract?: { pdf_url?: string | null; observacoes?: string | null } | { pdf_url?: string | null; observacoes?: string | null }[];
+  contract?: { pdf_url?: string | null; assinatura_url?: string | null; observacoes?: string | null } | { pdf_url?: string | null; assinatura_url?: string | null; observacoes?: string | null }[];
 };
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | undefined {
@@ -44,7 +44,7 @@ export default function AdminRentals() {
           *,
           product:products(nome, imagem),
           client:contract_client_data(*),
-          contract:contracts(pdf_url, observacoes)
+          contract:contracts(pdf_url, assinatura_url, observacoes)
         `)
         .order('created_at', { ascending: false });
 
@@ -115,14 +115,24 @@ export default function AdminRentals() {
         </View>
 
         <View className="flex-row mt-6 pt-4 border-t border-slate-50 space-x-3">
-          {contract?.pdf_url ? (
+          {(contract?.pdf_url || contract?.assinatura_url) ? (
             <TouchableOpacity
-              onPress={() => Linking.openURL(contract.pdf_url!)}
+              onPress={() => {
+                const url = contract?.pdf_url || contract?.assinatura_url;
+                if (url) Linking.openURL(url);
+              }}
               className="flex-1 bg-primary-50 py-3 rounded-xl flex-row items-center justify-center"
             >
               <FileText size={16} color={BRAND.primary} className="mr-2" />
-              <Text className="text-primary-700 font-bold text-sm">Contrato</Text>
+              <Text className="text-primary-700 font-bold text-sm">
+                {contract?.pdf_url ? 'Contrato' : 'Documento'}
+              </Text>
             </TouchableOpacity>
+          ) : contract !== undefined ? (
+            <View className="flex-1 bg-slate-100 py-3 rounded-xl flex-row items-center justify-center opacity-60">
+              <FileText size={16} color="#94a3b8" className="mr-2" />
+              <Text className="text-slate-400 font-bold text-sm">Sem PDF</Text>
+            </View>
           ) : null}
           <TouchableOpacity
             className="flex-1 bg-slate-50 py-3 rounded-xl flex-row items-center justify-center"

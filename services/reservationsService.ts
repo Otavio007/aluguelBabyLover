@@ -36,16 +36,26 @@ export const reservationsService = {
   },
 
   async checkAvailability(productId: string, start: string, end: string) {
-    // Basic check: any reservation for the same product that overlaps
-    // Simplified for now: just check if there are confirmed/in-progress reservations
     const { data, error } = await supabase
       .from('reservations')
       .select('id')
       .eq('product_id', productId)
-      .in('status', ['Confirmado', 'Em andamento'])
-      .or(`retirada_data.lte.${end},devolucao_data.gte.${start}`);
+      .not('status', 'in', '("Cancelado","Finalizado")')
+      .lte('retirada_data', end)
+      .gte('devolucao_data', start);
 
     if (error) throw error;
     return data.length === 0;
-  }
+  },
+
+  async getBookedRanges(productId: string): Promise<{ retirada_data: string; devolucao_data: string }[]> {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('retirada_data, devolucao_data')
+      .eq('product_id', productId)
+      .not('status', 'in', '("Cancelado","Finalizado")');
+
+    if (error) throw error;
+    return data ?? [];
+  },
 };

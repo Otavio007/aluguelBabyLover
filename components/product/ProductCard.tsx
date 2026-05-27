@@ -16,10 +16,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         className="bg-white rounded-3xl overflow-hidden border border-primary-100 mb-6 w-full md:w-[31%] md:mx-[1%] shadow-card"
         activeOpacity={0.92}
       >
-        <View className="relative h-64 w-full bg-primary-50">
+        <View className="relative h-64 w-full bg-primary-50 overflow-hidden">
           <Image
             source={{ uri: getFirstProductImage(product.imagem) }}
-            className="w-full h-full"
+            className="w-full h-full object-cover"
             resizeMode="cover"
           />
           <View className="absolute top-4 right-4 bg-white/95 px-3 py-1.5 rounded-full border border-primary-100">

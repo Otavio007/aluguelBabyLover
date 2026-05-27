@@ -1,8 +1,23 @@
+import React from 'react';
+import { pdf } from '@react-pdf/renderer';
+import { ContractPdf } from './ContractPdf';
 import { GenerateContractPdfParams } from './generateContractPdf';
 
-/** PDF via @react-pdf não é compatível com Expo Web — aluguel segue sem arquivo PDF. */
 export async function generateContractPdf(
-  _params: GenerateContractPdfParams
+  params: GenerateContractPdfParams
 ): Promise<Blob | null> {
-  return null;
+  try {
+    const blob = await pdf(
+      React.createElement(ContractPdf, {
+        clientData: params.clientData,
+        reservation: params.reservation,
+        product: params.product,
+        documentoUrl: params.documentoUrl,
+      })
+    ).toBlob();
+    return blob;
+  } catch (err) {
+    console.error('Erro ao gerar PDF no web:', err);
+    return null;
+  }
 }

@@ -102,7 +102,8 @@ export default function ContractPage() {
       const d1 = new Date(startDate! + 'T12:00:00');
       const d2 = new Date(endDate! + 'T12:00:00');
       const diffTime = d2.getTime() - d1.getTime();
-      const calculatedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 7;
+      // Inclusive: pickup day + all days until return day (both ends counted)
+      const calculatedDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1 || 1;
 
       // 1. Create Reservation
       const reservation = await reservationsService.create({

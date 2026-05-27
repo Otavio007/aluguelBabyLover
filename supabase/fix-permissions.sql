@@ -31,7 +31,14 @@ CREATE POLICY "Public Create Client Data"
   TO anon, authenticated
   WITH CHECK (true);
 
--- Admin continua podendo ler (painel logado)
+-- Público pode ler datas de reserva para verificar disponibilidade no calendário
+DROP POLICY IF EXISTS "Public Read Reservation Dates" ON reservations;
+CREATE POLICY "Public Read Reservation Dates"
+  ON reservations FOR SELECT
+  TO anon
+  USING (true);
+
+-- Admin continua podendo ler tudo (painel logado)
 DROP POLICY IF EXISTS "Admin Read Reservations" ON reservations;
 CREATE POLICY "Admin Read Reservations"
   ON reservations FOR SELECT

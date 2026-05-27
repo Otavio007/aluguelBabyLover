@@ -1,175 +1,168 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Calendar as CalendarIcon, Clock, Info, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Calendar as CalendarIcon, Clock, Info, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react-native';
 import { useProduct } from '@/hooks/useProducts';
+import { useBookedDates } from '@/hooks/useReservations';
 import { Button } from '@/components/ui/Button';
 import { Header } from '@/components/layout/Header';
 import { Modal } from '@/components/ui/Modal';
 import { format, addDays } from 'date-fns';
-import { 
-  formatDateToBR, 
-  getProductDevolucaoDias, 
-  getProductEntregaHoraInicio, 
-  getProductEntregaHoraFim, 
-  isValidReturnDate, 
-  generateTimeSlots 
+import {
+  formatDateToBR,
+  getProductDevolucaoDias,
+  getProductEntregaHoraInicio,
+  getProductEntregaHoraFim,
+  isValidReturnDate,
+  generateTimeSlots,
 } from '@/utils/schedulingHelper';
 import { BRAND } from '@/constants/brand';
+
+// Inclusive day count: pickup day + all days until return day (both ends counted)
+function calcDays(start: string, end: string): number {
+  try {
+    const d1 = new Date(start + 'T12:00:00');
+    const d2 = new Date(end + 'T12:00:00');
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 1;
+  } catch {
+    return 1;
+  }
+}
 
 export default function RentScheduling() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: product } = useProduct(id!);
+  const { bookedDatesSet } = useBookedDates(id!);
 
-  // State in ISO (yyyy-MM-dd) under the hood for DB compatibility
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('09:00');
   const [endDate, setEndDate] = useState(format(addDays(new Date(), 8), 'yyyy-MM-dd'));
   const [endTime, setEndTime] = useState('18:00');
 
-  // Picker modal controls
-  const [activePicker, setActivePicker] = useState<'start-date' | 'start-time' | 'end-date' | 'end-time' | null>(null);
+  // 'start' = user must pick start, 'end' = user must pick end
+  const [rangeStep, setRangeStep] = useState<'start' | 'end'>('start');
+  const [activePicker, setActivePicker] = useState<'period' | 'start-time' | 'end-time' | null>(null);
   const [calendarDate, setCalendarDate] = useState(new Date());
+
+  const calculatedDays = calcDays(startDate, endDate);
+  const totalEstimado = product ? product.valor * calculatedDays : 0;
 
   const handleContinue = () => {
     router.push({
       pathname: `/contract/[id]`,
-      params: { id: id!, startDate, startTime, endDate, endTime }
+      params: { id: id!, startDate, startTime, endDate, endTime },
     });
   };
 
-  const getDaysDifference = () => {
-    try {
-      const d1 = new Date(startDate + 'T12:00:00');
-      const d2 = new Date(endDate + 'T12:00:00');
-      const diffTime = d2.getTime() - d1.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return isNaN(diffDays) || diffDays <= 0 ? 3 : diffDays;
-    } catch (e) {
-      return 7;
-    }
-  };
-
-  const calculatedDays = getDaysDifference();
-  const totalEstimado = product ? product.valor * calculatedDays : 0;
-
   const changeMonth = (val: number) => {
-    const newDate = new Date(calendarDate);
-    newDate.setMonth(newDate.getMonth() + val);
-    setCalendarDate(newDate);
-  };
-
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    return new Date(year, month, 1).getDay();
+    const d = new Date(calendarDate);
+    d.setMonth(d.getMonth() + val);
+    setCalendarDate(d);
   };
 
   const MONTH_NAMES = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
   ];
-  
-  const WEEKDAYS_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-  const getModalTitle = () => {
-    switch (activePicker) {
-      case 'start-date':
-        return 'Selecione a Data de Retirada';
-      case 'end-date':
-        return 'Selecione a Data de Devolução';
-      case 'start-time':
-        return 'Selecione o Horário de Retirada';
-      case 'end-time':
-        return 'Selecione o Horário de Devolução';
-      default:
-        return '';
-    }
-  };
-
-  const renderCalendar = () => {
+  const renderRangeCalendar = () => {
     const year = calendarDate.getFullYear();
     const month = calendarDate.getMonth();
-    const totalDays = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month);
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const startD = new Date(startDate + 'T12:00:00');
+    const endD = new Date(endDate + 'T12:00:00');
+
     const cells = [];
-    
-    // Empty spaces for month offset
+
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<View key={`empty-${i}`} className="w-[14.28%] aspect-square" />);
+      cells.push(<View key={`e-${i}`} className="w-[14.28%] aspect-square" />);
     }
-    
-    // Days numbers
+
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const isStart = activePicker === 'start-date';
-      
+      const cellD = new Date(dateStr + 'T12:00:00');
+
+      const isBooked = bookedDatesSet.has(dateStr);
+
+      // For end step: cap selectable end before the first booked date after startDate
+      const firstBookedAfterStart = rangeStep === 'end'
+        ? [...bookedDatesSet].filter(d => d > startDate).sort()[0]
+        : undefined;
+
       let isDisabled = false;
-      const cellDate = new Date(dateStr + 'T12:00:00');
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (isStart) {
-        // Must be tomorrow or later
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        isDisabled = cellDate < tomorrow;
+      if (rangeStep === 'start') {
+        isDisabled = cellD < tomorrow || isBooked;
       } else {
-        // Must be at least 3 days after startDate
-        const minReturnDate = new Date(startDate + 'T12:00:00');
-        minReturnDate.setDate(minReturnDate.getDate() + 3);
-        
-        // Also must be within allowed return weekdays
-        isDisabled = cellDate < minReturnDate || !isValidReturnDate(product, dateStr);
+        const minReturn = new Date(startDate + 'T12:00:00');
+        minReturn.setDate(minReturn.getDate() + 2);
+        isDisabled =
+          cellD < minReturn ||
+          !isValidReturnDate(product, dateStr) ||
+          isBooked ||
+          (firstBookedAfterStart !== undefined && dateStr >= firstBookedAfterStart);
       }
-      
-      const currentSelected = isStart ? startDate : endDate;
-      const isSelected = currentSelected === dateStr;
-      
+
+      const isStart = dateStr === startDate;
+      const isEnd = dateStr === endDate;
+      const isInRange = cellD > startD && cellD < endD;
+
       cells.push(
         <TouchableOpacity
-          key={`day-${day}`}
+          key={`d-${day}`}
           disabled={isDisabled}
           onPress={() => {
-            if (isStart) {
+            if (rangeStep === 'start') {
               setStartDate(dateStr);
-              // Set end date to start + 7 days automatically
-              const returnDate = new Date(dateStr + 'T12:00:00');
-              returnDate.setDate(returnDate.getDate() + 7);
-              
-              let adjustedStr = format(returnDate, 'yyyy-MM-dd');
+              // Auto-suggest end = start + 7 days, adjusted to valid return day and not booked
+              const ret = new Date(dateStr + 'T12:00:00');
+              ret.setDate(ret.getDate() + 7);
+              let retStr = format(ret, 'yyyy-MM-dd');
               let attempts = 0;
-              while (!isValidReturnDate(product, adjustedStr) && attempts < 7) {
-                returnDate.setDate(returnDate.getDate() + 1);
-                adjustedStr = format(returnDate, 'yyyy-MM-dd');
+              while (
+                attempts < 14 &&
+                (!isValidReturnDate(product, retStr) || bookedDatesSet.has(retStr))
+              ) {
+                ret.setDate(ret.getDate() + 1);
+                retStr = format(ret, 'yyyy-MM-dd');
                 attempts++;
               }
-              setEndDate(adjustedStr);
+              setEndDate(retStr);
+              setRangeStep('end');
             } else {
               setEndDate(dateStr);
+              setActivePicker(null);
+              setRangeStep('start');
             }
-            setActivePicker(null);
           }}
-          className="w-[14.28%] aspect-square items-center justify-center p-1"
+          className={`w-[14.28%] aspect-square items-center justify-center ${
+            isInRange ? 'bg-primary-100' : ''
+          }`}
         >
           <View
             className={`w-9 h-9 rounded-full items-center justify-center ${
-              isSelected
-                ? 'bg-primary-600'
-                : isDisabled
-                ? 'bg-transparent'
-                : 'bg-slate-50 border border-slate-100'
+              isStart || isEnd ? 'bg-primary-600' : isBooked ? 'bg-red-100' : ''
             }`}
           >
             <Text
               className={`text-xs font-semibold ${
-                isSelected
+                isStart || isEnd
                   ? 'text-white font-bold'
+                  : isInRange
+                  ? 'text-primary-700 font-semibold'
+                  : isBooked
+                  ? 'text-red-300 line-through'
                   : isDisabled
-                  ? 'text-slate-200 line-through'
+                  ? 'text-slate-300 line-through'
                   : 'text-slate-700'
               }`}
             >
@@ -179,7 +172,7 @@ export default function RentScheduling() {
         </TouchableOpacity>
       );
     }
-    
+
     const rows = [];
     for (let i = 0; i < cells.length; i += 7) {
       rows.push(
@@ -188,10 +181,43 @@ export default function RentScheduling() {
         </View>
       );
     }
-    
+
     return (
       <View>
-        <View className="flex-row justify-between items-center mb-6">
+        {/* Step tabs */}
+        <View className="flex-row bg-slate-100 rounded-xl p-1 mb-4">
+          <View
+            className={`flex-1 py-2 rounded-lg items-center ${
+              rangeStep === 'start' ? 'bg-primary-600' : 'bg-transparent'
+            }`}
+          >
+            <Text className={`text-xs font-bold ${rangeStep === 'start' ? 'text-white' : 'text-slate-400'}`}>
+              Retirada
+            </Text>
+            <Text className={`text-xs ${rangeStep === 'start' ? 'text-primary-200' : 'text-slate-500'}`}>
+              {formatDateToBR(startDate)}
+            </Text>
+          </View>
+          <View
+            className={`flex-1 py-2 rounded-lg items-center ${
+              rangeStep === 'end' ? 'bg-primary-600' : 'bg-transparent'
+            }`}
+          >
+            <Text className={`text-xs font-bold ${rangeStep === 'end' ? 'text-white' : 'text-slate-400'}`}>
+              Devolução
+            </Text>
+            <Text className={`text-xs ${rangeStep === 'end' ? 'text-primary-200' : 'text-slate-500'}`}>
+              {formatDateToBR(endDate)}
+            </Text>
+          </View>
+        </View>
+
+        <Text className="text-center text-xs text-slate-400 mb-5">
+          {rangeStep === 'start' ? '👆 Toque na data de retirada' : '👆 Toque na data de devolução'}
+        </Text>
+
+        {/* Month nav */}
+        <View className="flex-row justify-between items-center mb-5">
           <TouchableOpacity onPress={() => changeMonth(-1)} className="p-2 border border-slate-200 rounded-xl bg-slate-50">
             <ChevronLeft size={16} color="#0f172a" />
           </TouchableOpacity>
@@ -202,48 +228,44 @@ export default function RentScheduling() {
             <ChevronRight size={16} color="#0f172a" />
           </TouchableOpacity>
         </View>
-        <View className="flex-row mb-3">
-          {WEEKDAYS_SHORT.map((wd, i) => (
+
+        {/* Weekday headers */}
+        <View className="flex-row mb-2">
+          {WEEKDAYS.map((wd, i) => (
             <Text key={i} className="flex-1 text-center text-xs font-bold text-slate-400">
               {wd}
             </Text>
           ))}
         </View>
-        <View className="space-y-1">{rows}</View>
+
+        <View>{rows}</View>
       </View>
     );
   };
 
   const renderTimePicker = () => {
     const isStart = activePicker === 'start-time';
-    const startLimit = getProductEntregaHoraInicio(product);
-    const endLimit = getProductEntregaHoraFim(product);
-    const timeSlots = generateTimeSlots(startLimit, endLimit);
+    const slots = generateTimeSlots(getProductEntregaHoraInicio(product), getProductEntregaHoraFim(product));
+    const selected = isStart ? startTime : endTime;
 
     return (
       <ScrollView className="max-h-64" showsVerticalScrollIndicator={false}>
-        <View className="flex-row flex-wrap gap-2 justify-start pb-4">
-          {timeSlots.map(slot => {
-            const currentSelected = isStart ? startTime : endTime;
-            const isSelected = currentSelected === slot;
+        <View className="flex-row flex-wrap gap-2 pb-4">
+          {slots.map((slot) => {
+            const isSel = selected === slot;
             return (
               <TouchableOpacity
                 key={slot}
                 onPress={() => {
-                  if (isStart) {
-                    setStartTime(slot);
-                  } else {
-                    setEndTime(slot);
-                  }
+                  if (isStart) setStartTime(slot);
+                  else setEndTime(slot);
                   setActivePicker(null);
                 }}
-                className={`px-3 py-2.5 rounded-xl border items-center justify-center ${
-                  isSelected
-                    ? 'bg-primary-600 border-primary-600 w-[30%]'
-                    : 'bg-slate-50 border-slate-100 w-[30%]'
+                className={`w-[30%] px-3 py-2.5 rounded-xl border items-center ${
+                  isSel ? 'bg-primary-600 border-primary-600' : 'bg-slate-50 border-slate-100'
                 }`}
               >
-                <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-600'}`}>
+                <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-slate-600'}`}>
                   {slot}
                 </Text>
               </TouchableOpacity>
@@ -254,11 +276,19 @@ export default function RentScheduling() {
     );
   };
 
+  const modalTitle = () => {
+    if (activePicker === 'period')
+      return rangeStep === 'start' ? 'Selecione a data de retirada' : 'Selecione a data de devolução';
+    if (activePicker === 'start-time') return 'Horário de Retirada';
+    if (activePicker === 'end-time') return 'Horário de Devolução';
+    return '';
+  };
+
   return (
     <View className="flex-1 bg-white">
       <Stack.Screen options={{ title: 'Agendamento' }} />
       <Header />
-      
+
       <ScrollView className="flex-1 px-6 pt-6">
         <View className="mb-6">
           <Text className="text-2xl font-bold text-slate-900 mb-2">Escolha as datas</Text>
@@ -268,73 +298,90 @@ export default function RentScheduling() {
         <View className="bg-primary-50 p-4 rounded-2xl mb-6 flex-row items-center">
           <Info size={20} color={BRAND.primary} />
           <Text className="ml-3 text-xs text-primary-700 flex-1 leading-relaxed">
-            O período mínimo de locação é de 3 dias. Devoluções permitidas somente em: <Text className="font-bold">{getProductDevolucaoDias(product).join(', ')}</Text>.
+            Período mínimo de <Text className="font-bold">3 dias</Text>. Devoluções permitidas em:{' '}
+            <Text className="font-bold">{getProductDevolucaoDias(product).join(', ')}</Text>.
           </Text>
         </View>
 
-        <View className="space-y-6">
-          {/* Pickup Section */}
-          <View className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-            <Text className="text-sm font-bold text-slate-800 mb-3 flex-row items-center">
-              <CalendarIcon size={16} color={BRAND.primary} className="mr-2" /> Retirada (Entrega)
+        {/* Single period field */}
+        <TouchableOpacity
+          onPress={() => {
+            setRangeStep('start');
+            setCalendarDate(new Date(startDate + 'T12:00:00'));
+            setActivePicker('period');
+          }}
+          activeOpacity={0.8}
+          className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-4"
+        >
+          <View className="flex-row items-center mb-4">
+            <CalendarIcon size={15} color={BRAND.primary} />
+            <Text className="ml-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Período de Locação
             </Text>
-            <View className="flex-row space-x-3">
+            <View className="ml-auto bg-primary-600 px-2.5 py-1 rounded-lg">
+              <Text className="text-white text-[10px] font-bold">Alterar</Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center">
+            {/* Retirada: data + hora */}
+            <View className="flex-1">
+              <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">
+                Retirada
+              </Text>
+              <Text className="text-slate-900 font-bold text-base">{formatDateToBR(startDate)}</Text>
               <TouchableOpacity
-                onPress={() => {
-                  setCalendarDate(new Date(startDate + 'T12:00:00'));
-                  setActivePicker('start-date');
-                }}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white justify-center h-14"
+                onPress={(e) => { e.stopPropagation?.(); setActivePicker('start-time'); }}
+                className="flex-row items-center mt-1"
               >
-                <Text className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Data</Text>
-                <Text className="text-slate-900 font-bold text-sm">{formatDateToBR(startDate)}</Text>
+                <Clock size={11} color={BRAND.primary} />
+                <Text className="ml-1 text-primary-600 font-bold text-sm">{startTime}</Text>
               </TouchableOpacity>
+            </View>
+
+            <View className="px-3">
+              <ArrowRight size={20} color={BRAND.primaryMuted} />
+            </View>
+
+            {/* Devolução: data + hora */}
+            <View className="flex-1 items-end">
+              <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">
+                Devolução
+              </Text>
+              <Text className="text-slate-900 font-bold text-base">{formatDateToBR(endDate)}</Text>
               <TouchableOpacity
-                onPress={() => setActivePicker('start-time')}
-                className="w-32 px-4 py-3 rounded-xl border border-slate-200 bg-white justify-center h-14"
+                onPress={(e) => { e.stopPropagation?.(); setActivePicker('end-time'); }}
+                className="flex-row items-center mt-1"
               >
-                <Text className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Hora</Text>
-                <Text className="text-slate-900 font-bold text-sm">{startTime}</Text>
+                <Clock size={11} color={BRAND.primary} />
+                <Text className="ml-1 text-primary-600 font-bold text-sm">{endTime}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Return Section */}
-          <View className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-4">
-            <Text className="text-sm font-bold text-slate-800 mb-3 flex-row items-center">
-              <Clock size={16} color={BRAND.primary} className="mr-2" /> Devolução (Coleta)
+          <View className="mt-4 bg-primary-100 rounded-xl py-2 items-center">
+            <Text className="text-primary-700 text-sm font-bold">
+              {calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'}
             </Text>
-            <View className="flex-row space-x-3">
-              <TouchableOpacity
-                onPress={() => {
-                  setCalendarDate(new Date(endDate + 'T12:00:00'));
-                  setActivePicker('end-date');
-                }}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white justify-center h-14"
-              >
-                <Text className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Data</Text>
-                <Text className="text-slate-900 font-bold text-sm">{formatDateToBR(endDate)}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setActivePicker('end-time')}
-                className="w-32 px-4 py-3 rounded-xl border border-slate-200 bg-white justify-center h-14"
-              >
-                <Text className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Hora</Text>
-                <Text className="text-slate-900 font-bold text-sm">{endTime}</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
-        <View className="mt-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+        {/* Summary */}
+        <View className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
           <Text className="text-sm font-bold text-slate-900 mb-4">Resumo do período</Text>
           <View className="flex-row justify-between mb-2">
-            <Text className="text-slate-500">Valor diária</Text>
-            <Text className="text-slate-900 font-medium">R$ {product?.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+            <Text className="text-slate-500">
+              Valor {product?.tipo_cobranca === 'dia' ? 'por dia' : `por ${product?.tipo_cobranca}`}
+            </Text>
+            <Text className="text-slate-900 font-medium">
+              R$ {product?.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </Text>
           </View>
           <View className="flex-row justify-between mb-4">
-            <Text className="text-slate-500">Total de dias (est.)</Text>
-            <Text className="text-slate-900 font-medium">{calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'}</Text>
+            <Text className="text-slate-500">Total de dias</Text>
+            <Text className="text-slate-900 font-medium">
+              {calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'}
+            </Text>
           </View>
           <View className="h-px bg-slate-200 w-full mb-4" />
           <View className="flex-row justify-between items-center">
@@ -344,25 +391,23 @@ export default function RentScheduling() {
             </Text>
           </View>
         </View>
-        
-        <View className="h-20" />
+
+        <View className="h-24" />
       </ScrollView>
 
       <View className="px-6 py-6 border-t border-slate-100 bg-white">
-        <Button 
-          label="Continuar para o contrato" 
-          onPress={handleContinue}
-          className="h-14"
-        />
+        <Button label="Continuar" onPress={handleContinue} className="h-14" />
       </View>
 
-      {/* Date/Time Picker Modal wrapper */}
       <Modal
         isOpen={activePicker !== null}
-        onClose={() => setActivePicker(null)}
-        title={getModalTitle()}
+        onClose={() => {
+          setActivePicker(null);
+          setRangeStep('start');
+        }}
+        title={modalTitle()}
       >
-        {activePicker && (activePicker.endsWith('date') ? renderCalendar() : renderTimePicker())}
+        {activePicker === 'period' ? renderRangeCalendar() : renderTimePicker()}
       </Modal>
     </View>
   );
