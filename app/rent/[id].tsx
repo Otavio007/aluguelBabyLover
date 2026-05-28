@@ -5,6 +5,7 @@ import { Calendar as CalendarIcon, Clock, Info, ChevronLeft, ChevronRight, Arrow
 import { useProduct } from '@/hooks/useProducts';
 import { useBookedDates } from '@/hooks/useReservations';
 import { Button } from '@/components/ui/Button';
+import { ScreenBackButton } from '@/components/ui/ScreenBackButton';
 import { Header } from '@/components/layout/Header';
 import { Modal } from '@/components/ui/Modal';
 import { format } from 'date-fns';
@@ -350,6 +351,8 @@ export default function RentScheduling() {
       <Header />
 
       <ScrollView className="flex-1 px-6 pt-6">
+        <ScreenBackButton fallbackHref={`/product/${id}`} label="Voltar ao produto" />
+
         <View className="mb-6">
           <Text className="text-2xl font-bold text-slate-900 mb-2">Escolha as datas</Text>
           <Text className="text-slate-500">Selecione o período que deseja utilizar o produto.</Text>

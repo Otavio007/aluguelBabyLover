@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ChevronLeft, Share2, CheckCircle2, Check } from 'lucide-react-native';
+import { Share2, CheckCircle2, Check } from 'lucide-react-native';
 import { useProduct } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/Button';
+import { ScreenBackButton } from '@/components/ui/ScreenBackButton';
 import { Header } from '@/components/layout/Header';
 import { getProductImages } from '@/utils/imageHelper';
 import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
@@ -113,13 +114,8 @@ export default function ProductDetails() {
             </View>
           )}
 
-          <View className="absolute top-4 left-4 flex-row space-x-2 z-10">
-            <TouchableOpacity 
-              onPress={() => router.back()}
-              className="p-2 bg-white/80 rounded-full shadow-sm"
-            >
-              <ChevronLeft size={24} color="#0f172a" />
-            </TouchableOpacity>
+          <View className="absolute top-4 left-4 z-10">
+            <ScreenBackButton fallbackHref="/" className="mb-0 p-2 bg-white/90 rounded-full shadow-sm" />
           </View>
           <View className="absolute top-4 right-4 flex-row space-x-2 z-10">
             <TouchableOpacity

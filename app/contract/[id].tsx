@@ -125,7 +125,13 @@ export default function ContractPage() {
       });
 
       // 2. Upload Document Photo
-      const documentoUrl = await uploadService.uploadDocument(reservation.id, documentImage);
+      let documentoUrl: string;
+      try {
+        documentoUrl = await uploadService.uploadDocument(reservation.id, documentImage);
+      } catch (uploadErr) {
+        console.error('Upload documento:', uploadErr);
+        throw uploadErr;
+      }
 
       // 3. PDF só no app nativo (web não usa @react-pdf — evita erro de módulo)
       let pdfUrl: string | null = null;
@@ -204,9 +210,14 @@ export default function ContractPage() {
       if (msg.includes('Bucket not found') || msg.includes('not found')) {
         userMsg =
           'Erro no armazenamento de arquivos. Verifique os buckets "signatures" e "contracts" no Supabase.';
-      } else if (msg.includes('row-level security') || msg.includes('policy')) {
+      } else if (
+        msg.includes('row-level security') ||
+        msg.includes('policy') ||
+        msg.includes('JWT') ||
+        msg.includes('permission')
+      ) {
         userMsg =
-          'Permissão negada no servidor. Configure as políticas de Storage e INSERT no Supabase.';
+          'Permissão negada no Supabase. No painel do projeto, abra SQL Editor e execute o arquivo supabase/setup-completo.sql (buckets + políticas de Storage e INSERT).';
       }
       setSubmitFeedback(userMsg);
       showAlert(userMsg);
