@@ -48,14 +48,47 @@ export const reservationsService = {
     return data.length === 0;
   },
 
+<<<<<<< HEAD
   async getBookedRanges(productId: string): Promise<{ retirada_data: string; devolucao_data: string }[]> {
     const { data, error } = await supabase
       .from('reservations')
       .select('retirada_data, devolucao_data')
+=======
+  async update(id: string, fields: Partial<Pick<Reservation, 'status' | 'entregue' | 'devolvido' | 'observacoes'>>) {
+    const { data, error } = await supabase
+      .from('reservations')
+      .update(fields)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Reservation;
+  },
+
+  async getAll() {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*, product:products(nome, imagem)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data as (Reservation & { product?: { nome: string; imagem?: string } })[];
+  },
+
+  async getBookedRanges(productId: string): Promise<{ retirada_data: string; devolucao_data: string; quantidade: number }[]> {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('retirada_data, devolucao_data, quantidade')
+>>>>>>> 44bc8be (Ajustes)
       .eq('product_id', productId)
       .not('status', 'in', '("Cancelado","Finalizado")');
 
     if (error) throw error;
+<<<<<<< HEAD
     return data ?? [];
+=======
+    return (data ?? []).map(r => ({ ...r, quantidade: r.quantidade ?? 1 }));
+>>>>>>> 44bc8be (Ajustes)
   },
 };

@@ -32,6 +32,10 @@ export interface Reservation {
   devolucao_hora: string;
   status: ReservationStatus;
   valor_total: number;
+  quantidade: number;
+  entregue: boolean;
+  devolvido: boolean;
+  observacoes?: string | null;
   created_at: string;
   updated_at: string;
   product?: Product;

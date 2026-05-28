@@ -2,6 +2,24 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { Product, ContractClientData, Reservation } from '@/types';
 
+<<<<<<< HEAD
+=======
+function toBR(dateStr: string): string {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  return `${d}/${m}/${y}`;
+}
+
+function todayBR(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+>>>>>>> 44bc8be (Ajustes)
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: '#1e293b' },
   header: { marginBottom: 30, textAlign: 'center' },
@@ -30,6 +48,10 @@ export const ContractPdf = ({ clientData, reservation, product }: ContractPdfPro
       <View style={styles.header}>
         <Text style={styles.title}>BabyLover</Text>
         <Text style={styles.subtitle}>Contrato de Locação de Equipamento Infantil</Text>
+<<<<<<< HEAD
+=======
+        <Text style={{ fontSize: 8, color: '#94a3b8', marginTop: 4 }}>Gerado em {todayBR()}</Text>
+>>>>>>> 44bc8be (Ajustes)
       </View>
 
       <View style={styles.section}>
@@ -64,11 +86,29 @@ export const ContractPdf = ({ clientData, reservation, product }: ContractPdfPro
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Período:</Text>
+<<<<<<< HEAD
           <Text style={styles.value}>{`${reservation.retirada_data} ${reservation.retirada_hora} até ${reservation.devolucao_data} ${reservation.devolucao_hora}`}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Valor Total:</Text>
           <Text style={styles.value}>{`R$ ${reservation.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</Text>
+=======
+          <Text style={styles.value}>{`${toBR(reservation.retirada_data)} às ${reservation.retirada_hora} até ${toBR(reservation.devolucao_data)} às ${reservation.devolucao_hora}`}</Text>
+        </View>
+        {(reservation.quantidade ?? 1) > 1 && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Quantidade:</Text>
+            <Text style={styles.value}>{reservation.quantidade} unidades</Text>
+          </View>
+        )}
+        <View style={styles.row}>
+          <Text style={styles.label}>Valor Unitário:</Text>
+          <Text style={styles.value}>{`R$ ${product.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / ${product.tipo_cobranca}`}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>Valor Total:</Text>
+          <Text style={[styles.value, { fontWeight: 'bold', color: '#4C007D' }]}>{`R$ ${reservation.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</Text>
+>>>>>>> 44bc8be (Ajustes)
         </View>
       </View>
 

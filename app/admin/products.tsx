@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Product } from '@/types';
 import { getProductImages, getFirstProductImage } from '@/utils/imageHelper';
 import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
-import { getProductDevolucaoDias, getProductEntregaHoraInicio, getProductEntregaHoraFim } from '@/utils/schedulingHelper';
+import { getProductDevolucaoDias, getProductEntregaHoraInicio, getProductEntregaHoraFim, getWeekdayDisplay } from '@/utils/schedulingHelper';
 import { useNewRentalsCount } from '@/hooks/useNewRentalsCount';
 import { BRAND } from '@/constants/brand';
 import { settingsService, SocialLink } from '@/services/settingsService';
@@ -534,7 +534,7 @@ export default function AdminProducts() {
                     className={`px-3 py-2 rounded-xl border ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white border-slate-200'}`}
                   >
                     <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-600'}`}>
-                      {day}
+                      {getWeekdayDisplay(day)}
                     </Text>
                   </TouchableOpacity>
                 );

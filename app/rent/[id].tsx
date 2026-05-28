@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+<<<<<<< HEAD
 import { Calendar as CalendarIcon, Clock, Info, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react-native';
+=======
+import { Calendar as CalendarIcon, Clock, Info, ChevronLeft, ChevronRight, ArrowRight, Minus, Plus } from 'lucide-react-native';
+>>>>>>> 44bc8be (Ajustes)
 import { useProduct } from '@/hooks/useProducts';
 import { useBookedDates } from '@/hooks/useReservations';
 import { Button } from '@/components/ui/Button';
 import { Header } from '@/components/layout/Header';
 import { Modal } from '@/components/ui/Modal';
+<<<<<<< HEAD
 import { format, addDays } from 'date-fns';
+=======
+import { format } from 'date-fns';
+>>>>>>> 44bc8be (Ajustes)
 import {
   formatDateToBR,
   getProductDevolucaoDias,
@@ -15,6 +23,7 @@ import {
   getProductEntregaHoraFim,
   isValidReturnDate,
   generateTimeSlots,
+<<<<<<< HEAD
 } from '@/utils/schedulingHelper';
 import { BRAND } from '@/constants/brand';
 
@@ -27,6 +36,28 @@ function calcDays(start: string, end: string): number {
     return diff > 0 ? diff : 1;
   } catch {
     return 1;
+=======
+  getWeekdayDisplay,
+} from '@/utils/schedulingHelper';
+import { BRAND } from '@/constants/brand';
+
+function calcDays(start: string | null, end: string | null): number {
+  if (!start || !end) return 0;
+  try {
+    const d1 = new Date(start + 'T12:00:00');
+    const d2 = new Date(end + 'T12:00:00');
+    // Math.floor evita arredondamentos errados; +1 para incluir ambos os dias
+    const diff = Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 1;
+  } catch {
+    return 0;
+  }
+}
+
+function showAlert(msg: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(msg);
+>>>>>>> 44bc8be (Ajustes)
   }
 }
 
@@ -34,25 +65,65 @@ export default function RentScheduling() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: product } = useProduct(id!);
+<<<<<<< HEAD
   const { bookedDatesSet } = useBookedDates(id!);
 
   const [startDate, setStartDate] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+=======
+  const [selectedQty, setSelectedQty] = useState(1);
+  const { bookedDatesSet, countMap, isLoading: isLoadingBooked } = useBookedDates(id!, product?.quantidade ?? 1);
+
+  // Max units available for the selected period (product stock minus peak bookings in range)
+  const maxAvailable = useMemo(() => {
+    const stock = product?.quantidade ?? 1;
+    if (!startDate || !endDate) return stock;
+    let peakBooked = 0;
+    const cur = new Date(startDate + 'T12:00:00');
+    const end = new Date(endDate + 'T12:00:00');
+    while (cur <= end) {
+      const ds = format(cur, 'yyyy-MM-dd');
+      peakBooked = Math.max(peakBooked, countMap.get(ds) ?? 0);
+      cur.setDate(cur.getDate() + 1);
+    }
+    return Math.max(1, stock - peakBooked);
+  }, [product, startDate, endDate, countMap]);
+
+  const [startDate, setStartDate] = useState<string | null>(null);
+>>>>>>> 44bc8be (Ajustes)
   const [startTime, setStartTime] = useState('09:00');
-  const [endDate, setEndDate] = useState(format(addDays(new Date(), 8), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState<string | null>(null);
   const [endTime, setEndTime] = useState('18:00');
 
+<<<<<<< HEAD
   // 'start' = user must pick start, 'end' = user must pick end
+=======
+>>>>>>> 44bc8be (Ajustes)
   const [rangeStep, setRangeStep] = useState<'start' | 'end'>('start');
   const [activePicker, setActivePicker] = useState<'period' | 'start-time' | 'end-time' | null>(null);
   const [calendarDate, setCalendarDate] = useState(new Date());
 
   const calculatedDays = calcDays(startDate, endDate);
+<<<<<<< HEAD
   const totalEstimado = product ? product.valor * calculatedDays : 0;
+=======
+  const valorUnit = Number(product?.valor ?? 0);
+  const totalEstimado = calculatedDays > 0 && valorUnit > 0
+    ? valorUnit * calculatedDays * selectedQty
+    : 0;
+>>>>>>> 44bc8be (Ajustes)
 
   const handleContinue = () => {
+    if (!startDate || !endDate) {
+      showAlert('Selecione as datas de retirada e devolução.');
+      return;
+    }
     router.push({
       pathname: `/contract/[id]`,
+<<<<<<< HEAD
       params: { id: id!, startDate, startTime, endDate, endTime },
+=======
+      params: { id: id!, startDate, startTime, endDate, endTime, quantidade: String(selectedQty) },
+>>>>>>> 44bc8be (Ajustes)
     });
   };
 
@@ -79,8 +150,19 @@ export default function RentScheduling() {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
+<<<<<<< HEAD
     const startD = new Date(startDate + 'T12:00:00');
     const endD = new Date(endDate + 'T12:00:00');
+=======
+    const startD = startDate ? new Date(startDate + 'T12:00:00') : null;
+    const endD = endDate ? new Date(endDate + 'T12:00:00') : null;
+
+    // For end step: earliest booked date after startDate caps the selectable range
+    const firstBookedAfterStart =
+      rangeStep === 'end' && startDate
+        ? [...bookedDatesSet].filter((d) => d > startDate).sort()[0]
+        : undefined;
+>>>>>>> 44bc8be (Ajustes)
 
     const cells = [];
 
@@ -91,6 +173,7 @@ export default function RentScheduling() {
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const cellD = new Date(dateStr + 'T12:00:00');
+<<<<<<< HEAD
 
       const isBooked = bookedDatesSet.has(dateStr);
 
@@ -99,11 +182,19 @@ export default function RentScheduling() {
         ? [...bookedDatesSet].filter(d => d > startDate).sort()[0]
         : undefined;
 
+=======
+      const isBooked = bookedDatesSet.has(dateStr);
+
+>>>>>>> 44bc8be (Ajustes)
       let isDisabled = false;
       if (rangeStep === 'start') {
         isDisabled = cellD < tomorrow || isBooked;
       } else {
+<<<<<<< HEAD
         const minReturn = new Date(startDate + 'T12:00:00');
+=======
+        const minReturn = startDate ? new Date(startDate + 'T12:00:00') : tomorrow;
+>>>>>>> 44bc8be (Ajustes)
         minReturn.setDate(minReturn.getDate() + 2);
         isDisabled =
           cellD < minReturn ||
@@ -112,9 +203,16 @@ export default function RentScheduling() {
           (firstBookedAfterStart !== undefined && dateStr >= firstBookedAfterStart);
       }
 
+<<<<<<< HEAD
       const isStart = dateStr === startDate;
       const isEnd = dateStr === endDate;
       const isInRange = cellD > startD && cellD < endD;
+=======
+      const isStart = startDate !== null && dateStr === startDate;
+      const isEnd = endDate !== null && dateStr === endDate;
+      const isInRange =
+        startD !== null && endD !== null && cellD > startD && cellD < endD;
+>>>>>>> 44bc8be (Ajustes)
 
       cells.push(
         <TouchableOpacity
@@ -123,6 +221,7 @@ export default function RentScheduling() {
           onPress={() => {
             if (rangeStep === 'start') {
               setStartDate(dateStr);
+<<<<<<< HEAD
               // Auto-suggest end = start + 7 days, adjusted to valid return day and not booked
               const ret = new Date(dateStr + 'T12:00:00');
               ret.setDate(ret.getDate() + 7);
@@ -137,6 +236,9 @@ export default function RentScheduling() {
                 attempts++;
               }
               setEndDate(retStr);
+=======
+              setEndDate(null);
+>>>>>>> 44bc8be (Ajustes)
               setRangeStep('end');
             } else {
               setEndDate(dateStr);
@@ -150,19 +252,38 @@ export default function RentScheduling() {
         >
           <View
             className={`w-9 h-9 rounded-full items-center justify-center ${
+<<<<<<< HEAD
               isStart || isEnd ? 'bg-primary-600' : isBooked ? 'bg-red-100' : ''
+=======
+              isStart || isEnd
+                ? 'bg-primary-600'
+                : isBooked
+                ? 'bg-red-500'
+                : isInRange
+                ? ''
+                : ''
+>>>>>>> 44bc8be (Ajustes)
             }`}
           >
             <Text
               className={`text-xs font-semibold ${
                 isStart || isEnd
                   ? 'text-white font-bold'
+<<<<<<< HEAD
                   : isInRange
                   ? 'text-primary-700 font-semibold'
                   : isBooked
                   ? 'text-red-300 line-through'
                   : isDisabled
                   ? 'text-slate-300 line-through'
+=======
+                  : isBooked
+                  ? 'text-white line-through'
+                  : isInRange
+                  ? 'text-primary-700 font-semibold'
+                  : isDisabled
+                  ? 'text-slate-300'
+>>>>>>> 44bc8be (Ajustes)
                   : 'text-slate-700'
               }`}
             >
@@ -184,7 +305,11 @@ export default function RentScheduling() {
 
     return (
       <View>
+<<<<<<< HEAD
         {/* Step tabs */}
+=======
+        {/* Step indicator */}
+>>>>>>> 44bc8be (Ajustes)
         <View className="flex-row bg-slate-100 rounded-xl p-1 mb-4">
           <View
             className={`flex-1 py-2 rounded-lg items-center ${
@@ -195,7 +320,11 @@ export default function RentScheduling() {
               Retirada
             </Text>
             <Text className={`text-xs ${rangeStep === 'start' ? 'text-primary-200' : 'text-slate-500'}`}>
+<<<<<<< HEAD
               {formatDateToBR(startDate)}
+=======
+              {startDate ? formatDateToBR(startDate) : 'Selecione'}
+>>>>>>> 44bc8be (Ajustes)
             </Text>
           </View>
           <View
@@ -207,7 +336,11 @@ export default function RentScheduling() {
               Devolução
             </Text>
             <Text className={`text-xs ${rangeStep === 'end' ? 'text-primary-200' : 'text-slate-500'}`}>
+<<<<<<< HEAD
               {formatDateToBR(endDate)}
+=======
+              {endDate ? formatDateToBR(endDate) : 'Selecione'}
+>>>>>>> 44bc8be (Ajustes)
             </Text>
           </View>
         </View>
@@ -218,13 +351,23 @@ export default function RentScheduling() {
 
         {/* Month nav */}
         <View className="flex-row justify-between items-center mb-5">
+<<<<<<< HEAD
           <TouchableOpacity onPress={() => changeMonth(-1)} className="p-2 border border-slate-200 rounded-xl bg-slate-50">
+=======
+          <TouchableOpacity
+            onPress={() => changeMonth(-1)}
+            className="p-2 border border-slate-200 rounded-xl bg-slate-50"
+          >
+>>>>>>> 44bc8be (Ajustes)
             <ChevronLeft size={16} color="#0f172a" />
           </TouchableOpacity>
           <Text className="text-sm font-bold text-slate-800 uppercase tracking-wider">
             {MONTH_NAMES[month]} {year}
           </Text>
-          <TouchableOpacity onPress={() => changeMonth(1)} className="p-2 border border-slate-200 rounded-xl bg-slate-50">
+          <TouchableOpacity
+            onPress={() => changeMonth(1)}
+            className="p-2 border border-slate-200 rounded-xl bg-slate-50"
+          >
             <ChevronRight size={16} color="#0f172a" />
           </TouchableOpacity>
         </View>
@@ -238,14 +381,51 @@ export default function RentScheduling() {
           ))}
         </View>
 
+<<<<<<< HEAD
         <View>{rows}</View>
+=======
+        {isLoadingBooked ? (
+          <View className="py-3 items-center">
+            <Text className="text-xs text-slate-400">Carregando disponibilidade...</Text>
+          </View>
+        ) : (
+          <View>{rows}</View>
+        )}
+
+        {/* Legend */}
+        <View className="mt-5 pt-4 border-t border-slate-100 flex-row flex-wrap gap-x-4 gap-y-2">
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-4 h-4 rounded-full bg-primary-600" />
+            <Text className="text-xs text-slate-500">Selecionado</Text>
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-4 h-4 rounded-full bg-primary-100 border border-primary-200" />
+            <Text className="text-xs text-slate-500">Período</Text>
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-4 h-4 rounded-full bg-red-500" />
+            <Text className="text-xs text-slate-500">Indisponível</Text>
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-4 h-4 rounded-full bg-slate-100 border border-slate-200" />
+            <Text className="text-xs text-slate-400 line-through">Bloqueado</Text>
+          </View>
+        </View>
+>>>>>>> 44bc8be (Ajustes)
       </View>
     );
   };
 
   const renderTimePicker = () => {
     const isStart = activePicker === 'start-time';
+<<<<<<< HEAD
     const slots = generateTimeSlots(getProductEntregaHoraInicio(product), getProductEntregaHoraFim(product));
+=======
+    const slots = generateTimeSlots(
+      getProductEntregaHoraInicio(product),
+      getProductEntregaHoraFim(product)
+    );
+>>>>>>> 44bc8be (Ajustes)
     const selected = isStart ? startTime : endTime;
 
     return (
@@ -284,6 +464,11 @@ export default function RentScheduling() {
     return '';
   };
 
+<<<<<<< HEAD
+=======
+  const devolucaoDias = getProductDevolucaoDias(product).map(getWeekdayDisplay).join(', ');
+
+>>>>>>> 44bc8be (Ajustes)
   return (
     <View className="flex-1 bg-white">
       <Stack.Screen options={{ title: 'Agendamento' }} />
@@ -299,6 +484,7 @@ export default function RentScheduling() {
           <Info size={20} color={BRAND.primary} />
           <Text className="ml-3 text-xs text-primary-700 flex-1 leading-relaxed">
             Período mínimo de <Text className="font-bold">3 dias</Text>. Devoluções permitidas em:{' '}
+<<<<<<< HEAD
             <Text className="font-bold">{getProductDevolucaoDias(product).join(', ')}</Text>.
           </Text>
         </View>
@@ -308,6 +494,17 @@ export default function RentScheduling() {
           onPress={() => {
             setRangeStep('start');
             setCalendarDate(new Date(startDate + 'T12:00:00'));
+=======
+            <Text className="font-bold">{devolucaoDias}</Text>.
+          </Text>
+        </View>
+
+        {/* Period card */}
+        <TouchableOpacity
+          onPress={() => {
+            setRangeStep('start');
+            setCalendarDate(startDate ? new Date(startDate + 'T12:00:00') : new Date());
+>>>>>>> 44bc8be (Ajustes)
             setActivePicker('period');
           }}
           activeOpacity={0.8}
@@ -319,6 +516,7 @@ export default function RentScheduling() {
               Período de Locação
             </Text>
             <View className="ml-auto bg-primary-600 px-2.5 py-1 rounded-lg">
+<<<<<<< HEAD
               <Text className="text-white text-[10px] font-bold">Alterar</Text>
             </View>
           </View>
@@ -391,12 +589,183 @@ export default function RentScheduling() {
             </Text>
           </View>
         </View>
+=======
+              <Text className="text-white text-[10px] font-bold">
+                {startDate ? 'Alterar' : 'Selecionar'}
+              </Text>
+            </View>
+          </View>
+
+          {startDate || endDate ? (
+            <View className="flex-row items-center">
+              <View className="flex-1">
+                <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">
+                  Retirada
+                </Text>
+                <Text className="text-slate-900 font-bold text-base">
+                  {startDate ? formatDateToBR(startDate) : '— / — / ——'}
+                </Text>
+              </View>
+
+              <View className="px-3">
+                <ArrowRight size={20} color={BRAND.primaryMuted} />
+              </View>
+
+              <View className="flex-1 items-end">
+                <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">
+                  Devolução
+                </Text>
+                <Text className={`font-bold text-base ${endDate ? 'text-slate-900' : 'text-slate-300'}`}>
+                  {endDate ? formatDateToBR(endDate) : '— / — / ——'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View className="py-4 items-center">
+              <CalendarIcon size={28} color="#cbd5e1" />
+              <Text className="text-slate-400 text-sm mt-2">Toque para selecionar o período</Text>
+            </View>
+          )}
+
+          {calculatedDays > 0 && (
+            <View className="mt-4 bg-primary-100 rounded-xl py-2 items-center">
+              <Text className="text-primary-700 text-sm font-bold">
+                {calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Quantity selector — only when stock > 1 */}
+        {(product?.quantidade ?? 1) > 1 && (
+          <View className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 mb-4">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                  Quantidade
+                </Text>
+                <Text className="text-xs text-slate-400">
+                  Máx. disponível: {maxAvailable} {maxAvailable === 1 ? 'unidade' : 'unidades'}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-3">
+                <TouchableOpacity
+                  onPress={() => setSelectedQty(q => Math.max(1, q - 1))}
+                  disabled={selectedQty <= 1}
+                  className={`w-9 h-9 rounded-full items-center justify-center border ${
+                    selectedQty <= 1
+                      ? 'border-slate-200 bg-slate-100'
+                      : 'border-primary-600 bg-white'
+                  }`}
+                >
+                  <Minus size={16} color={selectedQty <= 1 ? '#cbd5e1' : '#4C007D'} />
+                </TouchableOpacity>
+                <Text className="text-xl font-bold text-slate-900 w-6 text-center">
+                  {selectedQty}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setSelectedQty(q => Math.min(maxAvailable, q + 1))}
+                  disabled={selectedQty >= maxAvailable}
+                  className={`w-9 h-9 rounded-full items-center justify-center border ${
+                    selectedQty >= maxAvailable
+                      ? 'border-slate-200 bg-slate-100'
+                      : 'border-primary-600 bg-primary-600'
+                  }`}
+                >
+                  <Plus size={16} color={selectedQty >= maxAvailable ? '#cbd5e1' : '#fff'} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Time fields — always visible */}
+        <View className="flex-row gap-3 mb-4">
+          <TouchableOpacity
+            onPress={() => setActivePicker('start-time')}
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 items-center"
+          >
+            <Clock size={14} color={BRAND.primary} />
+            <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-2 mb-1">
+              Hora Retirada
+            </Text>
+            <Text className="text-slate-900 font-bold text-sm">{startTime}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActivePicker('end-time')}
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 items-center"
+          >
+            <Clock size={14} color={BRAND.primary} />
+            <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-2 mb-1">
+              Hora Devolução
+            </Text>
+            <Text className="text-slate-900 font-bold text-sm">{endTime}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Summary — only when both dates selected */}
+        {startDate && endDate && (
+          <View className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+            <Text className="text-sm font-bold text-slate-900 mb-4">Resumo do período</Text>
+
+            {valorUnit === 0 && (
+              <View className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-4">
+                <Text className="text-yellow-800 text-xs">
+                  ⚠️ Valor deste produto não está configurado. Contate o administrador.
+                </Text>
+              </View>
+            )}
+
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-slate-500">
+                {(() => {
+                  const t = (product?.tipo_cobranca ?? '').toLowerCase();
+                  if (t === 'hora') return 'Valor por hora';
+                  if (t === 'semana') return 'Valor por semana';
+                  return 'Valor por dia';
+                })()}
+              </Text>
+              <Text className="text-slate-900 font-medium">
+                R$ {valorUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-slate-500">Dias</Text>
+              <Text className="text-slate-900 font-medium">
+                {calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'}
+              </Text>
+            </View>
+            {selectedQty > 1 && (
+              <View className="flex-row justify-between mb-2">
+                <Text className="text-slate-500">Quantidade</Text>
+                <Text className="text-slate-900 font-medium">{selectedQty} unidades</Text>
+              </View>
+            )}
+            <View className="h-px bg-slate-200 w-full mb-4 mt-2" />
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base font-bold text-slate-900">Total estimado</Text>
+              <Text className="text-xl font-bold text-primary-600">
+                R$ {totalEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+          </View>
+        )}
+>>>>>>> 44bc8be (Ajustes)
 
         <View className="h-24" />
       </ScrollView>
 
       <View className="px-6 py-6 border-t border-slate-100 bg-white">
+<<<<<<< HEAD
         <Button label="Continuar" onPress={handleContinue} className="h-14" />
+=======
+        <Button
+          label="Continuar"
+          onPress={handleContinue}
+          className="h-14"
+          disabled={!startDate || !endDate}
+        />
+>>>>>>> 44bc8be (Ajustes)
       </View>
 
       <Modal

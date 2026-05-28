@@ -1,5 +1,17 @@
 export const ALL_WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+export const WEEKDAY_DISPLAY: Record<string, string> = {
+  Dom: 'Domingo',
+  Seg: 'Segunda',
+  Ter: 'Terça',
+  Qua: 'Quarta',
+  Qui: 'Quinta',
+  Sex: 'Sexta',
+  Sáb: 'Sábado',
+};
+
+export const getWeekdayDisplay = (abbr: string): string => WEEKDAY_DISPLAY[abbr] ?? abbr;
+
 export const getProductDevolucaoDias = (product: any): string[] => {
   if (product) {
     if (product.devolucao_dias) {
