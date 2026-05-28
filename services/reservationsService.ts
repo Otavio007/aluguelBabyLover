@@ -48,12 +48,6 @@ export const reservationsService = {
     return data.length === 0;
   },
 
-<<<<<<< HEAD
-  async getBookedRanges(productId: string): Promise<{ retirada_data: string; devolucao_data: string }[]> {
-    const { data, error } = await supabase
-      .from('reservations')
-      .select('retirada_data, devolucao_data')
-=======
   async update(id: string, fields: Partial<Pick<Reservation, 'status' | 'entregue' | 'devolvido' | 'observacoes'>>) {
     const { data, error } = await supabase
       .from('reservations')
@@ -80,15 +74,10 @@ export const reservationsService = {
     const { data, error } = await supabase
       .from('reservations')
       .select('retirada_data, devolucao_data, quantidade')
->>>>>>> 44bc8be (Ajustes)
       .eq('product_id', productId)
       .not('status', 'in', '("Cancelado","Finalizado")');
 
     if (error) throw error;
-<<<<<<< HEAD
-    return data ?? [];
-=======
     return (data ?? []).map(r => ({ ...r, quantidade: r.quantidade ?? 1 }));
->>>>>>> 44bc8be (Ajustes)
   },
 };

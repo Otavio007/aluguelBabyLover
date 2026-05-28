@@ -41,13 +41,8 @@ import { reservationsService } from '@/services/reservationsService';
 
 type RentalRow = Reservation & {
   product?: { nome: string; imagem?: string };
-<<<<<<< HEAD
-  client?: { nome: string; cpf: string; telefone: string; email: string; observacoes?: string | null } | { nome: string; cpf: string; telefone: string; email: string; observacoes?: string | null }[];
-  contract?: { pdf_url?: string | null; assinatura_url?: string | null; observacoes?: string | null } | { pdf_url?: string | null; assinatura_url?: string | null; observacoes?: string | null }[];
-=======
   client?: { nome: string; cpf: string; telefone: string; email: string } | null;
   contract?: { pdf_url?: string | null; assinatura_url?: string | null } | null;
->>>>>>> 44bc8be (Ajustes)
 };
 
 type FilterTab = 'todos' | 'pendentes' | 'em_andamento' | 'finalizados' | 'cancelados';
@@ -85,13 +80,8 @@ export default function AdminRentals() {
         .select(`
           *,
           product:products(nome, imagem),
-<<<<<<< HEAD
-          client:contract_client_data(*),
-          contract:contracts(pdf_url, assinatura_url, observacoes)
-=======
           client:contract_client_data(nome, cpf, telefone, email),
           contract:contracts(pdf_url, assinatura_url)
->>>>>>> 44bc8be (Ajustes)
         `)
         .order('retirada_data', { ascending: false });
 
@@ -277,35 +267,12 @@ export default function AdminRentals() {
           ) : null}
         </View>
 
-<<<<<<< HEAD
-        <View className="flex-row mt-6 pt-4 border-t border-slate-50 space-x-3">
-          {(contract?.pdf_url || contract?.assinatura_url) ? (
-            <TouchableOpacity
-              onPress={() => {
-                const url = contract?.pdf_url || contract?.assinatura_url;
-                if (url) Linking.openURL(url);
-              }}
-              className="flex-1 bg-primary-50 py-3 rounded-xl flex-row items-center justify-center"
-            >
-              <FileText size={16} color={BRAND.primary} className="mr-2" />
-              <Text className="text-primary-700 font-bold text-sm">
-                {contract?.pdf_url ? 'Contrato' : 'Documento'}
-              </Text>
-            </TouchableOpacity>
-          ) : contract !== undefined ? (
-            <View className="flex-1 bg-slate-100 py-3 rounded-xl flex-row items-center justify-center opacity-60">
-              <FileText size={16} color="#94a3b8" className="mr-2" />
-              <Text className="text-slate-400 font-bold text-sm">Sem PDF</Text>
-            </View>
-          ) : null}
-=======
         {/* Divider */}
         <View style={{ height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 }} />
 
         {/* Action row */}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {/* Entregue toggle */}
->>>>>>> 44bc8be (Ajustes)
           <TouchableOpacity
             onPress={() => toggleField(item, 'entregue')}
             disabled={isSaving || item.devolvido}

@@ -20,11 +20,7 @@ export function useReservation(id: string) {
   });
 }
 
-<<<<<<< HEAD
-export function useBookedDates(productId: string) {
-=======
 export function useBookedDates(productId: string, quantity: number = 1) {
->>>>>>> 44bc8be (Ajustes)
   const query = useQuery({
     queryKey: ['booked-ranges', productId],
     queryFn: () => reservationsService.getBookedRanges(productId),
@@ -32,22 +28,6 @@ export function useBookedDates(productId: string, quantity: number = 1) {
     staleTime: 30_000,
   });
 
-<<<<<<< HEAD
-  const bookedDatesSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const range of query.data ?? []) {
-      const current = new Date(range.retirada_data + 'T12:00:00');
-      const end = new Date(range.devolucao_data + 'T12:00:00');
-      while (current <= end) {
-        set.add(format(current, 'yyyy-MM-dd'));
-        current.setDate(current.getDate() + 1);
-      }
-    }
-    return set;
-  }, [query.data]);
-
-  return { ...query, bookedDatesSet };
-=======
   const { bookedDatesSet, countMap } = useMemo(() => {
     // Sum reserved quantities per date across all active reservations
     const countMap = new Map<string, number>();
@@ -72,7 +52,6 @@ export function useBookedDates(productId: string, quantity: number = 1) {
   }, [query.data, quantity]);
 
   return { ...query, bookedDatesSet, countMap };
->>>>>>> 44bc8be (Ajustes)
 }
 
 export function useCreateReservation() {
