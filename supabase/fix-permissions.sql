@@ -69,6 +69,9 @@ DROP POLICY IF EXISTS "Public update contracts bucket" ON storage.objects;
 DROP POLICY IF EXISTS "Public read signatures bucket" ON storage.objects;
 DROP POLICY IF EXISTS "Public upload signatures bucket" ON storage.objects;
 DROP POLICY IF EXISTS "Public update signatures bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Public read product-images bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Public upload product-images bucket" ON storage.objects;
+DROP POLICY IF EXISTS "Public update product-images bucket" ON storage.objects;
 DROP POLICY IF EXISTS "Anon all signatures bucket" ON storage.objects;
 DROP POLICY IF EXISTS "Anon all contracts bucket" ON storage.objects;
 
@@ -105,3 +108,20 @@ CREATE POLICY "Public update contracts bucket"
   TO anon, authenticated
   USING (bucket_id = 'contracts')
   WITH CHECK (bucket_id = 'contracts');
+
+-- Bucket: product-images (fotos dos produtos)
+CREATE POLICY "Public read product-images bucket"
+  ON storage.objects FOR SELECT
+  TO public
+  USING (bucket_id = 'product-images');
+
+CREATE POLICY "Public upload product-images bucket"
+  ON storage.objects FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (bucket_id = 'product-images');
+
+CREATE POLICY "Public update product-images bucket"
+  ON storage.objects FOR UPDATE
+  TO anon, authenticated
+  USING (bucket_id = 'product-images')
+  WITH CHECK (bucket_id = 'product-images');

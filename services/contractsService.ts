@@ -44,5 +44,24 @@ export const contractsService = {
 
     if (error) throw error;
     return data as ContractClientData;
-  }
+  },
+
+  async updatePdfUrl(reservationId: string, pdfUrl: string) {
+    const existing = await this.getByReservationId(reservationId);
+    if (existing) {
+      const { error } = await supabase
+        .from('contracts')
+        .update({ pdf_url: pdfUrl })
+        .eq('id', existing.id);
+      if (error) throw error;
+      return;
+    }
+
+    const { error } = await supabase.from('contracts').insert({
+      reservation_id: reservationId,
+      pdf_url: pdfUrl,
+      observacoes: '',
+    });
+    if (error) throw error;
+  },
 };

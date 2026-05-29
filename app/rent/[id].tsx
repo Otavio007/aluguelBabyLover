@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Calendar as CalendarIcon, Clock, Info, ChevronLeft, ChevronRight, ArrowRight, Minus, Plus } from 'lucide-react-native';
+import { Calendar as CalendarIcon, Info, ChevronLeft, ChevronRight, ArrowRight, Minus, Plus } from 'lucide-react-native';
 import { useProduct } from '@/hooks/useProducts';
 import { useBookedDates } from '@/hooks/useReservations';
 import { Button } from '@/components/ui/Button';
@@ -12,10 +12,7 @@ import { format } from 'date-fns';
 import {
   formatDateToBR,
   getProductDevolucaoDias,
-  getProductEntregaHoraInicio,
-  getProductEntregaHoraFim,
   isValidReturnDate,
-  generateTimeSlots,
   getWeekdayDisplay,
 } from '@/utils/schedulingHelper';
 import { BRAND } from '@/constants/brand';
@@ -45,11 +42,9 @@ export default function RentScheduling() {
   const { data: product } = useProduct(id!);
   const [selectedQty, setSelectedQty] = useState(1);
   const [startDate, setStartDate] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState('09:00');
   const [endDate, setEndDate] = useState<string | null>(null);
-  const [endTime, setEndTime] = useState('18:00');
   const [rangeStep, setRangeStep] = useState<'start' | 'end'>('start');
-  const [activePicker, setActivePicker] = useState<'period' | 'start-time' | 'end-time' | null>(null);
+  const [activePicker, setActivePicker] = useState<'period' | null>(null);
   const [calendarDate, setCalendarDate] = useState(new Date());
 
   const { bookedDatesSet, countMap, isLoading: isLoadingBooked } = useBookedDates(id!, product?.quantidade ?? 1);
@@ -82,7 +77,7 @@ export default function RentScheduling() {
     }
     router.push({
       pathname: `/contract/[id]`,
-      params: { id: id!, startDate, startTime, endDate, endTime, quantidade: String(selectedQty) },
+      params: { id: id!, startDate, endDate, quantidade: String(selectedQty) },
     });
   };
 
@@ -299,66 +294,30 @@ export default function RentScheduling() {
     );
   };
 
-  const renderTimePicker = () => {
-    const isStart = activePicker === 'start-time';
-    const slots = generateTimeSlots(
-      getProductEntregaHoraInicio(product),
-      getProductEntregaHoraFim(product)
-    );
-    const selected = isStart ? startTime : endTime;
-
-    return (
-      <ScrollView className="max-h-64" showsVerticalScrollIndicator={false}>
-        <View className="flex-row flex-wrap gap-2 pb-4">
-          {slots.map((slot) => {
-            const isSel = selected === slot;
-            return (
-              <TouchableOpacity
-                key={slot}
-                onPress={() => {
-                  if (isStart) setStartTime(slot);
-                  else setEndTime(slot);
-                  setActivePicker(null);
-                }}
-                className={`w-[30%] px-3 py-2.5 rounded-xl border items-center ${
-                  isSel ? 'bg-primary-600 border-primary-600' : 'bg-slate-50 border-slate-100'
-                }`}
-              >
-                <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-slate-600'}`}>
-                  {slot}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </ScrollView>
-    );
-  };
-
-  const modalTitle = () => {
-    if (activePicker === 'period')
-      return rangeStep === 'start' ? 'Selecione a data de retirada' : 'Selecione a data de devolução';
-    if (activePicker === 'start-time') return 'Horário de Retirada';
-    if (activePicker === 'end-time') return 'Horário de Devolução';
-    return '';
-  };
+  const modalTitle = () =>
+    rangeStep === 'start' ? 'Selecione a data de retirada' : 'Selecione a data de devolução';
 
   const devolucaoDias = getProductDevolucaoDias(product).map(getWeekdayDisplay).join(', ');
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1" style={{ backgroundColor: '#FDF4FF' }}>
       <Stack.Screen options={{ title: 'Agendamento' }} />
       <Header />
 
-      <ScrollView className="flex-1 px-6 pt-6">
+      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
         <ScreenBackButton fallbackHref={`/product/${id}`} label="Voltar ao produto" />
 
-        <View className="mb-6">
+        <View className="mb-6 mt-2">
           <Text className="text-2xl font-bold text-slate-900 mb-2">Escolha as datas</Text>
-          <Text className="text-slate-500">Selecione o período que deseja utilizar o produto.</Text>
+          <Text className="text-slate-500 leading-relaxed">
+            Selecione o período que deseja utilizar o produto.
+          </Text>
         </View>
 
-        <View className="bg-primary-50 p-4 rounded-2xl mb-6 flex-row items-center">
+        <View
+          className="p-4 rounded-2xl mb-6 flex-row items-center"
+          style={{ backgroundColor: BRAND.primaryLight, borderWidth: 1, borderColor: '#E9CCFF' }}
+        >
           <Info size={20} color={BRAND.primary} />
           <Text className="ml-3 text-xs text-primary-700 flex-1 leading-relaxed">
             Período mínimo de <Text className="font-bold">3 dias</Text>. Devoluções permitidas em:{' '}
@@ -374,14 +333,17 @@ export default function RentScheduling() {
             setActivePicker('period');
           }}
           activeOpacity={0.8}
-          className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-4"
+          className="rounded-3xl p-5 mb-4 bg-white"
+          style={{ borderWidth: 1, borderColor: '#E9CCFF', shadowColor: BRAND.primary, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
         >
           <View className="flex-row items-center mb-4">
-            <CalendarIcon size={15} color={BRAND.primary} />
+            <View className="w-8 h-8 rounded-xl items-center justify-center" style={{ backgroundColor: BRAND.primaryLight }}>
+              <CalendarIcon size={15} color={BRAND.primary} />
+            </View>
             <Text className="ml-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
               Período de Locação
             </Text>
-            <View className="ml-auto bg-primary-600 px-2.5 py-1 rounded-lg">
+            <View className="ml-auto px-3 py-1 rounded-xl" style={{ backgroundColor: BRAND.accent }}>
               <Text className="text-white text-[10px] font-bold">
                 {startDate ? 'Alterar' : 'Selecionar'}
               </Text>
@@ -420,8 +382,8 @@ export default function RentScheduling() {
           )}
 
           {calculatedDays > 0 && (
-            <View className="mt-4 bg-primary-100 rounded-xl py-2 items-center">
-              <Text className="text-primary-700 text-sm font-bold">
+            <View className="mt-4 rounded-xl py-2.5 items-center" style={{ backgroundColor: BRAND.primaryLight }}>
+              <Text className="text-sm font-bold" style={{ color: BRAND.primary }}>
                 {calculatedDays} {calculatedDays === 1 ? 'dia' : 'dias'}
               </Text>
             </View>
@@ -471,33 +433,12 @@ export default function RentScheduling() {
           </View>
         )}
 
-        {/* Time fields — always visible */}
-        <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity
-            onPress={() => setActivePicker('start-time')}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 items-center"
-          >
-            <Clock size={14} color={BRAND.primary} />
-            <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-2 mb-1">
-              Hora Retirada
-            </Text>
-            <Text className="text-slate-900 font-bold text-sm">{startTime}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setActivePicker('end-time')}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 items-center"
-          >
-            <Clock size={14} color={BRAND.primary} />
-            <Text className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-2 mb-1">
-              Hora Devolução
-            </Text>
-            <Text className="text-slate-900 font-bold text-sm">{endTime}</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Summary — only when both dates selected */}
         {startDate && endDate && (
-          <View className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+          <View
+            className="p-6 rounded-3xl bg-white mb-4"
+            style={{ borderWidth: 1, borderColor: '#E9CCFF' }}
+          >
             <Text className="text-sm font-bold text-slate-900 mb-4">Resumo do período</Text>
 
             {valorUnit === 0 && (
@@ -535,8 +476,8 @@ export default function RentScheduling() {
             )}
             <View className="h-px bg-slate-200 w-full mb-4 mt-2" />
             <View className="flex-row justify-between items-center">
-              <Text className="text-base font-bold text-slate-900">Total estimado</Text>
-              <Text className="text-xl font-bold text-primary-600">
+              <Text className="text-base font-bold text-slate-900">Total da Reserva</Text>
+              <Text className="text-xl font-bold" style={{ color: BRAND.primary }}>
                 R$ {totalEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </Text>
             </View>
@@ -546,11 +487,11 @@ export default function RentScheduling() {
         <View className="h-24" />
       </ScrollView>
 
-      <View className="px-6 py-6 border-t border-slate-100 bg-white">
+      <View className="px-6 py-6 bg-white" style={{ borderTopWidth: 1, borderTopColor: '#F3E8FF' }}>
         <Button
           label="Continuar"
           onPress={handleContinue}
-          className="h-14"
+          className="h-14 rounded-3xl"
           disabled={!startDate || !endDate}
         />
       </View>
@@ -563,7 +504,7 @@ export default function RentScheduling() {
         }}
         title={modalTitle()}
       >
-        {activePicker === 'period' ? renderRangeCalendar() : renderTimePicker()}
+        {renderRangeCalendar()}
       </Modal>
     </View>
   );

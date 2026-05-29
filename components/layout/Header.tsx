@@ -1,29 +1,41 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LOGO } from '@/constants/brand';
+import { LOGO_MAIN, BRAND } from '@/constants/brand';
 
 export const Header = () => {
   const router = useRouter();
 
   return (
-    <View className="flex-row items-center justify-between px-5 py-1.5 bg-white border-b border-primary-100">
+    <View
+      className="flex-row items-center justify-between px-5 py-3 bg-white/95 border-b border-primary-100"
+      style={{
+        shadowColor: BRAND.primary,
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 4,
+      }}
+    >
       <TouchableOpacity
         onPress={() => router.push('/')}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         className="flex-row items-center"
       >
         <Image
-          source={LOGO}
-          className="h-8 w-24"
+          source={LOGO_MAIN}
+          style={{ width: 130, height: 40 }}
           resizeMode="contain"
-          accessibilityLabel="BabyLover"
+          accessibilityLabel="AlugaKi Baby"
         />
       </TouchableOpacity>
 
-      <View className="bg-primary-100 px-2 py-1 rounded-full border border-primary-200">
-        <Text className="text-[9px] font-bold text-primary-700 uppercase tracking-wide">
-          Locação infantil
+      <View
+        className="px-3 py-1.5 rounded-full"
+        style={{ backgroundColor: BRAND.primaryLight, borderWidth: 1, borderColor: '#E9CCFF' }}
+      >
+        <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: BRAND.primary }}>
+          Locação Infantil
         </Text>
       </View>
     </View>

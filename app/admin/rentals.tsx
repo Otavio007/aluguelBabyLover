@@ -38,6 +38,11 @@ import { Reservation, ReservationStatus } from '@/types';
 import { BRAND } from '@/constants/brand';
 import { useFocusEffect } from '@react-navigation/native';
 import { reservationsService } from '@/services/reservationsService';
+import { contractsService } from '@/services/contractsService';
+import { generateContractPdf } from '@/services/generateContractPdf';
+import { uploadService } from '@/services/uploadService';
+import { downloadPdfBlob } from '@/utils/downloadPdf';
+import { ContractClientData } from '@/types';
 
 type RentalRow = Reservation & {
   product?: { nome: string; imagem?: string };
@@ -65,6 +70,7 @@ export default function AdminRentals() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('todos');
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [generatingPdf, setGeneratingPdf] = useState<Record<string, boolean>>({});
 
   // Observations modal
   const [obsModal, setObsModal] = useState<{ open: boolean; id: string; value: string } | null>(null);
@@ -169,6 +175,79 @@ export default function AdminRentals() {
     }
   };
 
+  const handleGenerateContract = async (item: RentalRow) => {
+    setGeneratingPdf(prev => ({ ...prev, [item.id]: true }));
+    try {
+      const reservation = await reservationsService.getById(item.id);
+      if (!reservation.product) {
+        Alert.alert('Erro', 'Produto não encontrado para esta reserva.');
+        return;
+      }
+
+      const clientFromDb = await contractsService.getClientDataByReservationId(item.id);
+      const client = firstRelation(item.client);
+
+      const clientData: ContractClientData = clientFromDb ?? {
+        id: '',
+        reservation_id: item.id,
+        nome: client?.nome || item.cliente_nome,
+        cpf: client?.cpf || item.cliente_cpf,
+        endereco: '',
+        cidade: '',
+        estado: '',
+        cep: '',
+        telefone: client?.telefone || item.cliente_telefone,
+        email: client?.email || '',
+      };
+
+      const blob = await generateContractPdf({
+        clientData,
+        reservation,
+        product: reservation.product,
+      });
+
+      if (!blob) {
+        Alert.alert('Erro', 'Não foi possível gerar o PDF do contrato.');
+        return;
+      }
+
+      const fileName = `contrato-${item.id.slice(0, 8).toUpperCase()}.pdf`;
+      let uploadedUrl: string | null = null;
+
+      try {
+        uploadedUrl = await uploadService.uploadContractPdf(item.id, blob);
+        await contractsService.updatePdfUrl(item.id, uploadedUrl);
+        setRentals(prev =>
+          prev.map(r =>
+            r.id === item.id
+              ? {
+                  ...r,
+                  contract: {
+                    ...(firstRelation(r.contract) ?? {}),
+                    pdf_url: uploadedUrl,
+                  },
+                }
+              : r
+          )
+        );
+      } catch (uploadErr) {
+        console.warn('PDF gerado, mas falhou ao salvar no storage:', uploadErr);
+      }
+
+      if (Platform.OS === 'web') {
+        downloadPdfBlob(blob, fileName);
+      } else if (uploadedUrl) {
+        Linking.openURL(uploadedUrl);
+      } else {
+        Alert.alert('Sucesso', 'Contrato gerado com sucesso!');
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', 'Não foi possível gerar o contrato: ' + err.message);
+    } finally {
+      setGeneratingPdf(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
   const filteredRentals = rentals.filter(r => {
     if (activeFilter === 'todos') return true;
     if (activeFilter === 'pendentes') return r.status === 'Pendente' || r.status === 'Confirmado';
@@ -193,6 +272,7 @@ export default function AdminRentals() {
     const valor = Number(item.valor_total ?? 0);
     const colors = STATUS_COLORS[item.status] ?? STATUS_COLORS.Pendente;
     const isSaving = saving[item.id];
+    const isGenerating = generatingPdf[item.id];
 
     const periodoRetirada = formatDbDate(item.retirada_data, "dd/MM/yy");
     const periodoDevolucao = formatDbDate(item.devolucao_data, "dd/MM/yy");
@@ -248,13 +328,13 @@ export default function AdminRentals() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Calendar size={14} color="#94A3B8" />
             <Text style={{ fontSize: 13, color: '#475569' }}>
-              Retirada: {periodoRetirada} {item.retirada_hora ? `às ${String(item.retirada_hora).slice(0, 5)}` : ''}
+              Retirada: {periodoRetirada}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Clock size={14} color="#94A3B8" />
             <Text style={{ fontSize: 13, color: '#475569' }}>
-              Devolução: {periodoDevolucao} {item.devolucao_hora ? `às ${String(item.devolucao_hora).slice(0, 5)}` : ''}
+              Devolução: {periodoDevolucao}
             </Text>
           </View>
           {item.observacoes ? (
@@ -354,23 +434,52 @@ export default function AdminRentals() {
           >
             <MessageSquare size={16} color={item.observacoes ? '#EA580C' : '#94A3B8'} />
           </TouchableOpacity>
+        </View>
 
-          {/* Contract PDF */}
+        {/* Contract PDF row */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <TouchableOpacity
+            onPress={() => handleGenerateContract(item)}
+            disabled={isGenerating || isSaving}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: '#F5E6FF',
+              borderWidth: 1,
+              borderColor: '#DDD6FE',
+              opacity: isGenerating || isSaving ? 0.6 : 1,
+            }}
+          >
+            {isGenerating ? (
+              <ActivityIndicator size="small" color={BRAND.primary} />
+            ) : (
+              <FileText size={16} color={BRAND.primary} />
+            )}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND.primary }}>
+              {isGenerating ? 'Gerando contrato...' : 'Gerar Contrato PDF'}
+            </Text>
+          </TouchableOpacity>
+
           {pdfUrl ? (
             <TouchableOpacity
               onPress={() => Linking.openURL(pdfUrl)}
               style={{
-                paddingHorizontal: 12,
+                paddingHorizontal: 14,
                 paddingVertical: 10,
                 borderRadius: 12,
-                backgroundColor: '#F5E6FF',
+                backgroundColor: '#fff',
                 borderWidth: 1,
                 borderColor: '#DDD6FE',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <FileText size={16} color={BRAND.primary} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND.primary }}>Ver PDF</Text>
             </TouchableOpacity>
           ) : null}
         </View>

@@ -142,3 +142,19 @@ ON storage.objects FOR UPDATE
 TO anon, authenticated
 USING (bucket_id = 'signatures')
 WITH CHECK (bucket_id = 'signatures');
+
+CREATE POLICY "Public read product-images bucket"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'product-images');
+
+CREATE POLICY "Public upload product-images bucket"
+ON storage.objects FOR INSERT
+TO anon, authenticated
+WITH CHECK (bucket_id = 'product-images');
+
+CREATE POLICY "Public update product-images bucket"
+ON storage.objects FOR UPDATE
+TO anon, authenticated
+USING (bucket_id = 'product-images')
+WITH CHECK (bucket_id = 'product-images');

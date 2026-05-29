@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Plus, Edit2, Trash2, Package, LogOut, FileText, Key, Share2, ExternalLink } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, Package, LogOut, FileText, Key, Share2, ExternalLink, Menu, Tags, ChevronRight } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProducts } from '@/hooks/useProducts';
+import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -18,6 +20,8 @@ import { settingsService, SocialLink } from '@/services/settingsService';
 
 export default function AdminProducts() {
   const { data: products, isLoading, refetch } = useProducts();
+  const { data: categories = [], refetch: refetchCategories } = useCategories();
+  const queryClient = useQueryClient();
   const { newCount } = useNewRentalsCount();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
@@ -38,6 +42,18 @@ export default function AdminProducts() {
   const [newSocialTexto, setNewSocialTexto] = useState('');
   const [newSocialLink, setNewSocialLink] = useState('');
   const [isSavingSocial, setIsSavingSocial] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nome: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Admin menu
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
+
+  // Categories
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const [localCategories, setLocalCategories] = useState<string[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSavingCategories, setIsSavingCategories] = useState(false);
+  const [categoryDeleteConfirm, setCategoryDeleteConfirm] = useState<string | null>(null);
 
   const loadSocialLinks = async () => {
     try {
@@ -49,8 +65,84 @@ export default function AdminProducts() {
   };
 
   const handleOpenSocialModal = async () => {
+    setIsAdminMenuOpen(false);
     await loadSocialLinks();
     setIsSocialModalOpen(true);
+  };
+
+  const handleOpenPasswordModal = () => {
+    setIsAdminMenuOpen(false);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleOpenRentals = () => {
+    setIsAdminMenuOpen(false);
+    router.push('/admin/rentals');
+  };
+
+  const handleOpenCategoriesModal = async () => {
+    setIsAdminMenuOpen(false);
+    try {
+      const cats = await settingsService.getCategories();
+      setLocalCategories(cats);
+      setNewCategoryName('');
+      setIsCategoriesModalOpen(true);
+    } catch (err: any) {
+      Alert.alert('Erro', 'Não foi possível carregar as categorias: ' + err.message);
+    }
+  };
+
+  const handleAddCategory = () => {
+    const name = newCategoryName.trim();
+    if (!name) {
+      Alert.alert('Atenção', 'Digite o nome da categoria.');
+      return;
+    }
+    if (localCategories.some(c => c.toLowerCase() === name.toLowerCase())) {
+      Alert.alert('Atenção', 'Esta categoria já existe.');
+      return;
+    }
+    setLocalCategories(prev => [...prev, name]);
+    setNewCategoryName('');
+  };
+
+  const handleRemoveCategory = (categoryName: string) => {
+    const inUse = products?.some(p => p.categoria === categoryName) ?? false;
+    if (inUse) {
+      const count = products?.filter(p => p.categoria === categoryName).length ?? 0;
+      Alert.alert(
+        'Não é possível excluir',
+        `Existem ${count} produto(s) nesta categoria. Altere a categoria deles antes de excluir.`
+      );
+      return;
+    }
+    setCategoryDeleteConfirm(categoryName);
+  };
+
+  const handleConfirmRemoveCategory = () => {
+    if (!categoryDeleteConfirm) return;
+    setLocalCategories(prev => prev.filter(c => c !== categoryDeleteConfirm));
+    setCategoryDeleteConfirm(null);
+  };
+
+  const handleSaveCategories = async () => {
+    if (localCategories.length === 0) {
+      Alert.alert('Atenção', 'Cadastre pelo menos uma categoria.');
+      return;
+    }
+
+    setIsSavingCategories(true);
+    try {
+      await settingsService.saveCategories(localCategories);
+      await queryClient.invalidateQueries({ queryKey: ['categories'] });
+      refetchCategories();
+      Alert.alert('Sucesso', 'Categorias salvas com sucesso!');
+      setIsCategoriesModalOpen(false);
+    } catch (err: any) {
+      Alert.alert('Erro', 'Não foi possível salvar as categorias: ' + err.message);
+    } finally {
+      setIsSavingCategories(false);
+    }
   };
 
   const handleAddSocialLink = () => {
@@ -122,7 +214,11 @@ export default function AdminProducts() {
   };
 
   const handleOpenNewModal = () => {
-    setEditingProduct({ tipo_cobranca: 'Dia', quantidade: 1 });
+    setEditingProduct({
+      tipo_cobranca: 'Dia',
+      quantidade: 1,
+      categoria: categories[0] ?? '',
+    });
     setNewRuleTitle('');
     setNewRuleText('');
     setIsModalOpen(true);
@@ -139,6 +235,10 @@ export default function AdminProducts() {
     const valorStr = editingProduct?.valor?.toString().trim();
     if (!editingProduct?.nome || !valorStr) {
       alert('Nome e valor são obrigatórios.');
+      return;
+    }
+    if (!editingProduct?.categoria?.trim()) {
+      alert('Selecione uma categoria para o produto.');
       return;
     }
 
@@ -222,15 +322,23 @@ export default function AdminProducts() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+  const handleDeletePress = (product: Product) => {
+    setDeleteConfirm({ id: product.id, nome: product.nome });
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return;
+
+    setIsDeleting(true);
     try {
-      const { error } = await supabase.from('products').delete().eq('id', id);
+      const { error } = await supabase.from('products').delete().eq('id', deleteConfirm.id);
       if (error) throw error;
+      setDeleteConfirm(null);
       refetch();
     } catch (error: any) {
-      alert('Erro ao excluir: ' + error.message);
+      Alert.alert('Erro', 'Não foi possível excluir o produto: ' + error.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -255,7 +363,7 @@ export default function AdminProducts() {
           <Edit2 size={18} color="#64748b" />
         </TouchableOpacity>
         <TouchableOpacity 
-          onPress={() => handleDelete(item.id)}
+          onPress={() => handleDeletePress(item)}
           className="p-2 bg-red-50 rounded-lg"
         >
           <Trash2 size={18} color="#ef4444" />
@@ -273,15 +381,13 @@ export default function AdminProducts() {
           <Text className="text-2xl font-bold text-slate-900">Estoque</Text>
           <Text className="text-slate-500">Controle seus produtos</Text>
         </View>
-        <View className="flex-row space-x-2">
+        <View className="flex-row items-center gap-2">
           <TouchableOpacity
-            onPress={() => router.push('/admin/rentals')}
-            className="p-3 bg-slate-100 rounded-xl relative"
-            accessibilityLabel={
-              newCount > 0 ? `Contratos, ${newCount} aluguéis novos` : 'Contratos'
-            }
+            onPress={() => setIsAdminMenuOpen(true)}
+            className="p-3 bg-primary-50 rounded-xl relative"
+            accessibilityLabel="Menu administrativo"
           >
-            <FileText size={20} color={newCount > 0 ? BRAND.primary : '#475569'} />
+            <Menu size={22} color={BRAND.primary} />
             {newCount > 0 && (
               <View className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full items-center justify-center border-2 border-white">
                 <Text className="text-[10px] font-bold text-white">
@@ -289,25 +395,6 @@ export default function AdminProducts() {
                 </Text>
               </View>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleOpenSocialModal}
-            className="p-3 bg-primary-50 rounded-xl"
-            accessibilityLabel="Gerenciar redes sociais"
-          >
-            <Share2 size={20} color={BRAND.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setIsPasswordModalOpen(true)}
-            className="p-3 bg-slate-100 rounded-xl"
-          >
-            <Key size={20} color="#475569" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleLogout}
-            className="p-3 bg-red-50 rounded-xl"
-          >
-            <LogOut size={20} color="#ef4444" />
           </TouchableOpacity>
         </View>
       </View>
@@ -371,12 +458,36 @@ export default function AdminProducts() {
             multiline
           />
           <View className="flex-row space-x-4">
-            <Input
-              label="Categoria"
-              value={editingProduct?.categoria}
-              onChangeText={v => setEditingProduct({ ...editingProduct, categoria: v })}
-              containerClassName="flex-1"
-            />
+            <View className="flex-1 mb-4">
+              <Text className="mb-2 text-sm font-medium text-slate-700">Categoria</Text>
+              {categories.length > 0 ? (
+                <View className="flex-row flex-wrap gap-2">
+                  {categories.map(cat => (
+                    <TouchableOpacity
+                      key={cat}
+                      onPress={() => setEditingProduct({ ...editingProduct, categoria: cat })}
+                      className={`px-3 py-2 rounded-xl border ${
+                        editingProduct?.categoria === cat
+                          ? 'bg-primary-500 border-primary-500'
+                          : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          editingProduct?.categoria === cat ? 'text-white' : 'text-slate-600'
+                        }`}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <Text className="text-xs text-slate-400">
+                  Nenhuma categoria cadastrada. Adicione no menu administrativo.
+                </Text>
+              )}
+            </View>
             <Input
               label="Marca"
               value={editingProduct?.marca}
@@ -779,6 +890,246 @@ export default function AdminProducts() {
             className="mt-2 h-12"
           />
         </ScrollView>
+      </Modal>
+
+      {/* Menu Administrativo */}
+      <Modal
+        isOpen={isAdminMenuOpen}
+        onClose={() => setIsAdminMenuOpen(false)}
+        title="Menu Administrativo"
+      >
+        <View className="gap-2">
+          <TouchableOpacity
+            onPress={handleOpenRentals}
+            className="flex-row items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-primary-50 items-center justify-center">
+                <FileText size={20} color={BRAND.primary} />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-slate-900">Ver Contratos</Text>
+                <Text className="text-xs text-slate-500">Locações e aluguéis</Text>
+              </View>
+            </View>
+            <View className="flex-row items-center gap-2">
+              {newCount > 0 && (
+                <View className="min-w-[22px] h-[22px] px-1.5 bg-red-500 rounded-full items-center justify-center">
+                  <Text className="text-[10px] font-bold text-white">
+                    {newCount > 9 ? '9+' : newCount}
+                  </Text>
+                </View>
+              )}
+              <ChevronRight size={18} color="#94a3b8" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleOpenCategoriesModal}
+            className="flex-row items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-primary-50 items-center justify-center">
+                <Tags size={20} color={BRAND.primary} />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-slate-900">Categorias</Text>
+                <Text className="text-xs text-slate-500">Adicionar ou excluir categorias</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleOpenPasswordModal}
+            className="flex-row items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-slate-100 items-center justify-center">
+                <Key size={20} color="#475569" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-slate-900">Alterar Senha</Text>
+                <Text className="text-xs text-slate-500">Atualizar senha do admin</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleOpenSocialModal}
+            className="flex-row items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-primary-50 items-center justify-center">
+                <Share2 size={20} color={BRAND.primary} />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-slate-900">Redes Sociais</Text>
+                <Text className="text-xs text-slate-500">Links exibidos no site</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              setIsAdminMenuOpen(false);
+              handleLogout();
+            }}
+            className="flex-row items-center justify-between bg-red-50 border border-red-100 rounded-2xl px-4 py-4 mt-2"
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-white items-center justify-center">
+                <LogOut size={20} color="#ef4444" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-red-600">Sair</Text>
+                <Text className="text-xs text-red-400">Encerrar sessão</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#fca5a5" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Modal Categorias */}
+      <Modal
+        isOpen={isCategoriesModalOpen}
+        onClose={() => !isSavingCategories && setIsCategoriesModalOpen(false)}
+        title="Gerenciar Categorias"
+      >
+        <ScrollView className="max-h-[70vh]" showsVerticalScrollIndicator={false}>
+          {localCategories.length === 0 ? (
+            <View className="items-center py-6 mb-4">
+              <Tags size={32} color="#cbd5e1" />
+              <Text className="text-slate-400 text-sm mt-3 text-center">
+                Nenhuma categoria cadastrada ainda.{`\n`}Adicione abaixo.
+              </Text>
+            </View>
+          ) : (
+            <View className="mb-4">
+              <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                Categorias cadastradas
+              </Text>
+              {localCategories.map(cat => {
+                const productCount = products?.filter(p => p.categoria === cat).length ?? 0;
+                return (
+                  <View
+                    key={cat}
+                    className="flex-row items-center bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 mb-2"
+                  >
+                    <View className="flex-1 mr-3">
+                      <Text className="text-sm font-bold text-slate-800">{cat}</Text>
+                      <Text className="text-xs text-slate-400 mt-0.5">
+                        {productCount} {productCount === 1 ? 'produto' : 'produtos'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveCategory(cat)}
+                      className="p-2 bg-red-50 rounded-xl"
+                    >
+                      <Trash2 size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          <View className="bg-primary-50 border border-primary-100 rounded-2xl p-4 mb-4">
+            <Text className="text-xs font-bold text-primary-700 uppercase tracking-wider mb-3">
+              Adicionar nova categoria
+            </Text>
+            <Input
+              label="Nome da categoria"
+              placeholder="Ex: Berços"
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              containerClassName="mb-3"
+            />
+            <Button
+              label="+ Adicionar"
+              onPress={handleAddCategory}
+              className="h-10 py-1 bg-primary-600"
+            />
+          </View>
+
+          <Button
+            label="Salvar Categorias"
+            onPress={handleSaveCategories}
+            isLoading={isSavingCategories}
+            className="mt-2 h-12"
+          />
+        </ScrollView>
+      </Modal>
+
+      <Modal
+        isOpen={!!categoryDeleteConfirm}
+        onClose={() => setCategoryDeleteConfirm(null)}
+        title="Excluir categoria"
+      >
+        <Text className="text-slate-600 text-base leading-6 mb-2">
+          Tem certeza que deseja excluir esta categoria?
+        </Text>
+        {categoryDeleteConfirm && (
+          <Text className="text-slate-900 font-bold text-base mb-6">
+            {categoryDeleteConfirm}
+          </Text>
+        )}
+        <Text className="text-slate-400 text-sm mb-6">
+          Ela será removida da listagem do site após salvar.
+        </Text>
+        <View className="flex-row gap-3">
+          <Button
+            label="Cancelar"
+            onPress={() => setCategoryDeleteConfirm(null)}
+            variant="ghost"
+            className="flex-1 h-12"
+            labelClassName="text-slate-700"
+          />
+          <Button
+            label="Excluir"
+            onPress={handleConfirmRemoveCategory}
+            variant="danger"
+            className="flex-1 h-12"
+          />
+        </View>
+      </Modal>
+
+      <Modal
+        isOpen={!!deleteConfirm}
+        onClose={() => !isDeleting && setDeleteConfirm(null)}
+        title="Excluir produto"
+      >
+        <Text className="text-slate-600 text-base leading-6 mb-2">
+          Tem certeza que deseja excluir o produto abaixo?
+        </Text>
+        {deleteConfirm && (
+          <Text className="text-slate-900 font-bold text-base mb-6">
+            {deleteConfirm.nome}
+          </Text>
+        )}
+        <Text className="text-slate-400 text-sm mb-6">
+          Esta ação não pode ser desfeita.
+        </Text>
+        <View className="flex-row gap-3">
+          <Button
+            label="Cancelar"
+            onPress={() => setDeleteConfirm(null)}
+            disabled={isDeleting}
+            variant="ghost"
+            className="flex-1 h-12"
+            labelClassName="text-slate-700"
+          />
+          <Button
+            label="Excluir"
+            onPress={handleConfirmDelete}
+            isLoading={isDeleting}
+            variant="danger"
+            className="flex-1 h-12"
+          />
+        </View>
       </Modal>
     </View>
   );

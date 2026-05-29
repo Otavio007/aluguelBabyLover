@@ -21,9 +21,9 @@ export const Button = ({
   ...props
 }: ButtonProps) => {
   const variants = {
-    primary: 'bg-primary-500 shadow-soft',
-    secondary: 'bg-secondary-700',
-    outline: 'bg-white border-2 border-primary-400',
+    primary: 'bg-accent-500 shadow-glow',
+    secondary: 'bg-primary-600 shadow-soft',
+    outline: 'bg-white border-2 border-primary-300',
     ghost: 'bg-primary-50',
     danger: 'bg-red-500',
   };

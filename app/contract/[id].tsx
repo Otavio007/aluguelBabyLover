@@ -18,7 +18,11 @@ import {
   ContractFormData,
   getFormErrorMessages,
 } from '@/utils/formValidators';
-import { BRAND, LOGO } from '@/constants/brand';
+import { BRAND, LOGO_MASCOT } from '@/constants/brand';
+import {
+  getProductEntregaHoraInicio,
+  getProductEntregaHoraFim,
+} from '@/utils/schedulingHelper';
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -28,12 +32,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function ContractPage() {
-  const { id, startDate, startTime, endDate, endTime, quantidade } = useLocalSearchParams<{
+  const { id, startDate, endDate, quantidade } = useLocalSearchParams<{
     id: string;
     startDate: string;
-    startTime: string;
     endDate: string;
-    endTime: string;
     quantidade: string;
   }>();
   const selectedQty = Math.max(1, parseInt(quantidade ?? '1', 10) || 1);
@@ -45,6 +47,7 @@ export default function ContractPage() {
   const [submitFeedback, setSubmitFeedback] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const {
@@ -116,9 +119,9 @@ export default function ContractPage() {
         cliente_cpf: data.cpf,
         cliente_telefone: data.telefone,
         retirada_data: startDate!,
-        retirada_hora: startTime!,
+        retirada_hora: getProductEntregaHoraInicio(product),
         devolucao_data: endDate!,
-        devolucao_hora: endTime!,
+        devolucao_hora: getProductEntregaHoraFim(product),
         status: 'Pendente',
         quantidade: selectedQty,
         valor_total: valorUnit * calculatedDays * selectedQty,
@@ -202,6 +205,7 @@ export default function ContractPage() {
         }
       }
 
+      setOrderNumber(reservation.id.slice(0, 8).toUpperCase());
       setShowSuccess(true);
     } catch (error) {
       console.error(error);
@@ -236,7 +240,7 @@ export default function ContractPage() {
 
   if (showSuccess) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ flex: 1, backgroundColor: '#FDF4FF' }}>
         <Stack.Screen options={{ title: 'Aluguel Confirmado', headerShown: false }} />
         <ScrollView
           contentContainerStyle={{
@@ -247,10 +251,9 @@ export default function ContractPage() {
             paddingVertical: 48,
           }}
         >
-          {/* Logo */}
           <Image
-            source={LOGO}
-            style={{ width: 100, height: 100, borderRadius: 20, marginBottom: 32 }}
+            source={LOGO_MASCOT}
+            style={{ width: 100, height: 100, marginBottom: 24 }}
             resizeMode="contain"
           />
 
@@ -284,6 +287,35 @@ export default function ContractPage() {
           >
             Aluguel confirmado!
           </Text>
+
+          {orderNumber && (
+            <View
+              style={{
+                backgroundColor: '#F8FAFC',
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                borderRadius: 16,
+                paddingVertical: 14,
+                paddingHorizontal: 24,
+                marginBottom: 20,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 4 }}>
+                Número do pedido
+              </Text>
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: '800',
+                  color: BRAND.primary,
+                  letterSpacing: 2,
+                }}
+              >
+                #{orderNumber}
+              </Text>
+            </View>
+          )}
 
           {/* Thank you message */}
           <Text
@@ -344,7 +376,7 @@ export default function ContractPage() {
                 Contrato salvo
               </Text>
               <Text style={{ fontSize: 12, color: '#7C3AED', lineHeight: 18 }}>
-                Guarde o número do seu pedido e aguarde nossa confirmação.
+                Anote o número do pedido acima e aguarde nossa confirmação.
               </Text>
             </View>
           </View>
@@ -363,13 +395,17 @@ export default function ContractPage() {
             onPress={() => router.replace('/')}
             style={{
               width: '100%',
-              backgroundColor: BRAND.primary,
-              borderRadius: 18,
+              backgroundColor: BRAND.accent,
+              borderRadius: 20,
               paddingVertical: 18,
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'row',
               gap: 10,
+              shadowColor: BRAND.accent,
+              shadowOpacity: 0.4,
+              shadowRadius: 12,
+              elevation: 4,
             }}
           >
             <Home size={20} color="#fff" />
@@ -383,14 +419,19 @@ export default function ContractPage() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1" style={{ backgroundColor: '#FDF4FF' }}>
       <Stack.Screen options={{ title: 'Contrato' }} />
       <Header />
-      
-      <ScrollView ref={scrollRef} className="flex-1 px-6 pt-6">
-        <View className="mb-8">
+
+      <ScrollView ref={scrollRef} className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+        <View
+          className="mb-8 p-5 rounded-3xl bg-white"
+          style={{ borderWidth: 1, borderColor: '#E9CCFF' }}
+        >
           <Text className="text-2xl font-bold text-slate-900 mb-2">Dados do Contrato</Text>
-          <Text className="text-slate-500">Preencha suas informações para gerar o contrato de locação.</Text>
+          <Text className="text-slate-500 leading-relaxed">
+            Preencha suas informações para gerar o contrato de locação.
+          </Text>
         </View>
 
         <View className="space-y-4 mb-10">
@@ -510,9 +551,9 @@ export default function ContractPage() {
         <View className="h-20" />
       </ScrollView>
 
-      <View className="px-6 py-6 border-t border-slate-100 bg-white">
+      <View className="px-6 py-6 bg-white" style={{ borderTopWidth: 1, borderTopColor: '#F3E8FF' }}>
         {submitFeedback && (
-          <View className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+          <View className="mb-3 p-3 rounded-2xl bg-amber-50 border border-amber-200">
             <Text className="text-sm text-amber-900">{submitFeedback}</Text>
           </View>
         )}
@@ -520,7 +561,7 @@ export default function ContractPage() {
           label="Finalizar Aluguel"
           onPress={handleFinalizePress}
           isLoading={isSubmitting}
-          className="h-14"
+          className="h-14 rounded-3xl"
           accessibilityRole="button"
         />
       </View>

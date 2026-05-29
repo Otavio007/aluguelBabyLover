@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
-import { Search, Filter, Package, Sparkles } from 'lucide-react-native';
+import { Search, Package, Sparkles, ShieldCheck, Heart } from 'lucide-react-native';
 import { useProducts } from '@/hooks/useProducts';
+import { useCategories } from '@/hooks/useCategories';
 import { ProductCard } from '@/components/product/ProductCard';
 import { getProductDescription } from '@/utils/rulesHelper';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { BRAND } from '@/constants/brand';
 
-const CATEGORIES = ['Todos', 'Carrinhos', 'Cadeirinhas', 'Brinquedos', 'Quarto', 'Banho'];
-
 export default function Home() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Todos');
   const { data: products, isLoading } = useProducts();
+  const { data: categories = [] } = useCategories();
+
+  const categoryFilters = ['Todos', ...categories];
 
   const filteredProducts = products?.filter((p) => {
     const desc = getProductDescription(p).toLowerCase();
@@ -25,28 +27,61 @@ export default function Home() {
   });
 
   return (
-    <View className="flex-1 bg-primary-50">
+    <View className="flex-1" style={{ backgroundColor: '#FDF4FF' }}>
       <Stack.Screen options={{ title: 'Início' }} />
       <Header />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="px-6 py-10 bg-white border-b border-primary-100">
-          <View className="flex-row items-center mb-3">
-            <Sparkles size={18} color={BRAND.primary} />
-            <Text className="ml-2 text-xs font-bold text-primary-600 uppercase tracking-widest">
-              BabyLover Locação
+        {/* Hero */}
+        <View
+          className="px-6 pt-8 pb-10"
+          style={{ backgroundColor: BRAND.primary }}
+        >
+          <View className="flex-row items-center mb-4">
+            <Sparkles size={16} color={BRAND.yellow} />
+            <Text
+              className="ml-2 text-xs font-bold uppercase tracking-widest"
+              style={{ color: BRAND.yellow }}
+            >
+              AlugaKi Baby
             </Text>
           </View>
-          <Text className="text-4xl font-bold text-slate-900 leading-tight">
+
+          <Text className="text-3xl md:text-4xl font-bold text-white leading-tight max-w-lg">
             Tudo o que seu bebê precisa,{' '}
-            <Text className="text-primary-600">sem pesar no bolso.</Text>
-          </Text>
-          <Text className="text-lg text-slate-500 mt-4 leading-relaxed">
-            Locação premium de produtos infantis com entrega rápida e higienização garantida.
+            <Text style={{ color: BRAND.accent }}>sem pesar no bolso.</Text>
           </Text>
 
-          <View className="flex-row items-center bg-primary-50 rounded-2xl px-4 py-3.5 mt-8 border border-primary-100">
-            <Search size={20} color={BRAND.primaryDark} />
+          {/* Trust badges */}
+          <View className="flex-row flex-wrap gap-2 mt-5">
+            {[
+              { icon: ShieldCheck, text: 'Higienizado' },
+              { icon: Heart, text: 'Com carinho' },
+            ].map(({ icon: Icon, text }) => (
+              <View
+                key={text}
+                className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+                style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}
+              >
+                <Icon size={13} color={BRAND.yellow} />
+                <Text className="text-white/90 text-xs font-semibold">{text}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Search */}
+          <View
+            className="flex-row items-center rounded-2xl px-4 py-3.5 mt-7"
+            style={{
+              backgroundColor: '#fff',
+              shadowColor: '#000',
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 8,
+            }}
+          >
+            <Search size={20} color={BRAND.primary} />
             <TextInput
               placeholder="O que você está procurando?"
               placeholderTextColor="#94a3b8"
@@ -54,55 +89,70 @@ export default function Home() {
               value={search}
               onChangeText={setSearch}
             />
-            <TouchableOpacity className="p-2.5 bg-primary-500 rounded-xl shadow-soft">
-              <Filter size={18} color="#fff" />
-            </TouchableOpacity>
           </View>
         </View>
 
-        <View className="py-6">
+        {/* Categories */}
+        <View className="py-5" style={{ backgroundColor: '#FDF4FF' }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 24 }}
           >
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setCategory(cat)}
-                className={`px-5 py-2.5 rounded-full mr-3 border ${
-                  category === cat
-                    ? 'bg-primary-500 border-primary-500 shadow-soft'
-                    : 'bg-white border-primary-100'
-                }`}
-              >
-                <Text
-                  className={`font-bold text-sm ${
-                    category === cat ? 'text-white' : 'text-slate-600'
-                  }`}
+            {categoryFilters.map((cat) => {
+              const active = category === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setCategory(cat)}
+                  className="px-5 py-2.5 rounded-full mr-2.5"
+                  style={{
+                    backgroundColor: active ? BRAND.accent : '#fff',
+                    borderWidth: 1,
+                    borderColor: active ? BRAND.accent : '#E9CCFF',
+                    shadowColor: active ? BRAND.accent : 'transparent',
+                    shadowOpacity: active ? 0.3 : 0,
+                    shadowRadius: 8,
+                    elevation: active ? 3 : 0,
+                  }}
                 >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    className="font-bold text-sm"
+                    style={{ color: active ? '#fff' : BRAND.primary }}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
+        {/* Products grid */}
         <View className="px-6 pb-12">
-          <Text className="text-2xl font-bold text-slate-900 mb-6">Destaques para você</Text>
+          <View className="flex-row items-center mb-6">
+            <View
+              className="w-1 h-6 rounded-full mr-3"
+              style={{ backgroundColor: BRAND.accent }}
+            />
+            <Text className="text-2xl font-bold text-slate-900">Destaques para você</Text>
+          </View>
 
           {isLoading ? (
             <ActivityIndicator size="large" color={BRAND.primary} className="mt-10" />
-          ) : (
+          ) : filteredProducts && filteredProducts.length > 0 ? (
             <View className="flex-row flex-wrap">
-              {filteredProducts && filteredProducts.length > 0 ? (
-                filteredProducts.map((item) => <ProductCard key={item.id} product={item} />)
-              ) : (
-                <View className="w-full items-center py-20 bg-white rounded-3xl border border-primary-100">
-                  <Package size={48} color={BRAND.primaryMuted} className="mb-4" />
-                  <Text className="text-slate-500 text-lg">Nenhum produto encontrado.</Text>
-                </View>
-              )}
+              {filteredProducts.map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
+            </View>
+          ) : (
+            <View
+              className="w-full items-center py-20 rounded-4xl"
+              style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#E9CCFF' }}
+            >
+              <Package size={48} color={BRAND.primaryMuted} />
+              <Text className="text-slate-500 text-lg mt-4">Nenhum produto encontrado.</Text>
             </View>
           )}
         </View>
@@ -111,4 +161,4 @@ export default function Home() {
       </ScrollView>
     </View>
   );
-};
+}

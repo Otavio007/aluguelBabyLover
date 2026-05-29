@@ -51,6 +51,8 @@ module.exports = {
       boxShadow: {
         soft: '0 4px 24px -4px rgba(76, 0, 125, 0.25)',
         card: '0 8px 30px -12px rgba(15, 23, 42, 0.12)',
+        glow: '0 8px 32px -8px rgba(255, 108, 182, 0.45)',
+        hero: '0 20px 60px -20px rgba(76, 0, 125, 0.35)',
       },
     },
   },
