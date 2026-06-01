@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Alert, Image, TouchableOpacity, Platform } from
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useForm, Controller, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Camera, Trash2, CheckCircle2, Heart, FileText, Home } from 'lucide-react-native';
+import { Camera, Trash2, CheckCircle2, Heart, FileText, Home, Printer } from 'lucide-react-native';
 import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +24,9 @@ import {
   getProductEntregaHoraFim,
   normalizeTime,
 } from '@/utils/schedulingHelper';
+import { printCompletedContract } from '@/utils/printContract';
+import { ContractPrintData } from '@/utils/buildContractPrintHtml';
+import { ContractClientData, Reservation } from '@/types';
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -49,6 +52,14 @@ export default function ContractPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [completedContract, setCompletedContract] = useState<{
+    printData: ContractPrintData;
+    pdfUrl: string | null;
+    pdfBlob: Blob | null;
+    reservation: Reservation;
+    clientData: ContractClientData;
+  } | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const {
@@ -212,7 +223,26 @@ export default function ContractPage() {
         }
       }
 
-      setOrderNumber(reservation.id.slice(0, 8).toUpperCase());
+      const pedido = reservation.id.slice(0, 8).toUpperCase();
+      const clientForPrint: ContractClientData = {
+        id: '',
+        reservation_id: reservation.id,
+        ...clientDataPayload,
+      };
+
+      setOrderNumber(pedido);
+      setCompletedContract({
+        printData: {
+          clientData: clientForPrint,
+          reservation,
+          product: product!,
+          orderNumber: pedido,
+        },
+        pdfUrl,
+        pdfBlob: pdfBlob ?? null,
+        reservation,
+        clientData: clientForPrint,
+      });
       setShowSuccess(true);
     } catch (error) {
       console.error(error);
@@ -243,6 +273,31 @@ export default function ContractPage() {
       return;
     }
     handleSubmit(onSubmit, onValidationError)();
+  };
+
+  const handlePrintContract = async () => {
+    if (!completedContract) return;
+    setIsPrinting(true);
+    try {
+      await printCompletedContract({
+        data: completedContract.printData,
+        pdfUrl: completedContract.pdfUrl,
+        pdfBlob: completedContract.pdfBlob,
+        fileName: `contrato-${orderNumber ?? 'aluguel'}.pdf`,
+        generatePdf: async () => {
+          const blob = await generateContractPdf({
+            clientData: completedContract.clientData,
+            reservation: completedContract.reservation,
+            product: completedContract.printData.product,
+          });
+          return blob;
+        },
+      });
+    } catch (err) {
+      showAlert(getErrorMessage(err) || 'Não foi possível abrir a impressão do contrato.');
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   if (showSuccess) {
@@ -348,7 +403,7 @@ export default function ContractPage() {
               marginBottom: 40,
             }}
           >
-            Seu contrato foi gerado e salvo com sucesso. Em breve entraremos em contato para combinar a retirada.
+            Seu contrato foi gerado e salvo com sucesso. Você pode imprimir uma cópia abaixo. Em breve entraremos em contato para combinar a retirada.
           </Text>
 
           {/* Contract info box */}
@@ -396,6 +451,29 @@ export default function ContractPage() {
             </Text>
             <Heart size={14} color={BRAND.accent} fill={BRAND.accent} />
           </View>
+
+          {/* Print contract */}
+          <TouchableOpacity
+            onPress={handlePrintContract}
+            disabled={isPrinting || !completedContract}
+            style={{
+              width: '100%',
+              backgroundColor: BRAND.primary,
+              borderRadius: 20,
+              paddingVertical: 18,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: 10,
+              marginBottom: 12,
+              opacity: isPrinting ? 0.7 : 1,
+            }}
+          >
+            <Printer size={20} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+              {isPrinting ? 'Abrindo impressão...' : 'Imprimir contrato'}
+            </Text>
+          </TouchableOpacity>
 
           {/* Back to home button */}
           <TouchableOpacity

@@ -42,7 +42,24 @@ import { contractsService } from '@/services/contractsService';
 import { generateContractPdf } from '@/services/generateContractPdf';
 import { uploadService } from '@/services/uploadService';
 import { downloadPdfBlob } from '@/utils/downloadPdf';
+import { printContractHtml } from '@/utils/printContract';
 import { ContractClientData } from '@/types';
+
+function showAdminAlert(title: string, message: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
+
+function openExternalUrl(url: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  Linking.openURL(url);
+}
 
 type RentalRow = Reservation & {
   product?: { nome: string; imagem?: string };
@@ -180,7 +197,7 @@ export default function AdminRentals() {
     try {
       const reservation = await reservationsService.getById(item.id);
       if (!reservation.product) {
-        Alert.alert('Erro', 'Produto não encontrado para esta reserva.');
+        showAdminAlert('Erro', 'Produto não encontrado para esta reserva.');
         return;
       }
 
@@ -200,6 +217,7 @@ export default function AdminRentals() {
         email: client?.email || '',
       };
 
+      const orderRef = item.id.slice(0, 8).toUpperCase();
       const blob = await generateContractPdf({
         clientData,
         reservation,
@@ -207,11 +225,20 @@ export default function AdminRentals() {
       });
 
       if (!blob) {
-        Alert.alert('Erro', 'Não foi possível gerar o PDF do contrato.');
+        printContractHtml({
+          clientData,
+          reservation,
+          product: reservation.product,
+          orderNumber: orderRef,
+        });
+        showAdminAlert(
+          'Contrato aberto',
+          'Não foi possível gerar o arquivo PDF automaticamente. Abrimos o contrato em uma nova janela — use Imprimir e escolha "Salvar como PDF".'
+        );
         return;
       }
 
-      const fileName = `contrato-${item.id.slice(0, 8).toUpperCase()}.pdf`;
+      const fileName = `contrato-${orderRef}.pdf`;
       let uploadedUrl: string | null = null;
 
       try {
@@ -236,13 +263,20 @@ export default function AdminRentals() {
 
       if (Platform.OS === 'web') {
         downloadPdfBlob(blob, fileName);
+        showAdminAlert(
+          'PDF gerado',
+          uploadedUrl
+            ? 'O download do contrato foi iniciado. O arquivo também foi salvo no sistema (botão Ver PDF).'
+            : 'O download do contrato foi iniciado. Verifique a pasta de downloads do navegador.'
+        );
       } else if (uploadedUrl) {
-        Linking.openURL(uploadedUrl);
+        openExternalUrl(uploadedUrl);
+        showAdminAlert('Sucesso', 'Contrato gerado e salvo com sucesso.');
       } else {
-        Alert.alert('Sucesso', 'Contrato gerado com sucesso!');
+        showAdminAlert('Sucesso', 'Contrato gerado com sucesso!');
       }
     } catch (err: any) {
-      Alert.alert('Erro', 'Não foi possível gerar o contrato: ' + err.message);
+      showAdminAlert('Erro', 'Não foi possível gerar o contrato: ' + err.message);
     } finally {
       setGeneratingPdf(prev => ({ ...prev, [item.id]: false }));
     }
@@ -467,7 +501,7 @@ export default function AdminRentals() {
 
           {pdfUrl ? (
             <TouchableOpacity
-              onPress={() => Linking.openURL(pdfUrl)}
+              onPress={() => openExternalUrl(pdfUrl)}
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 10,

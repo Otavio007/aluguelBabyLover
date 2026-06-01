@@ -5,6 +5,19 @@ import { LOCADOR, CONTRACT_COLORS } from './contractPdfConstants';
 
 import { LOGO_MASCOT } from '@/constants/brand';
 
+function resolvePdfImageSrc(asset: unknown): string | null {
+  if (!asset) return null;
+  if (typeof asset === 'string') return asset;
+  if (typeof asset === 'object' && asset !== null) {
+    const withUri = asset as { uri?: string; default?: string };
+    if (withUri.uri) return withUri.uri;
+    if (withUri.default) return withUri.default;
+  }
+  return null;
+}
+
+const LOGO_PDF_SRC = resolvePdfImageSrc(LOGO_MASCOT);
+
 function toBR(dateStr: string): string {
   if (!dateStr) return '___/___/______';
   const trimmed = String(dateStr).trim();
@@ -218,7 +231,13 @@ export function ContractPdfDocument({ clientData, reservation, product }: Contra
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <Image src={LOGO_MASCOT} style={{ width: 52, height: 52, objectFit: 'contain' }} />
+          {LOGO_PDF_SRC ? (
+            <Image src={LOGO_PDF_SRC} style={{ width: 52, height: 52, objectFit: 'contain' }} />
+          ) : (
+            <View style={{ width: 52, height: 52, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 8, fontWeight: 'bold', color: C.pink }}>BL</Text>
+            </View>
+          )}
           <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 6 }}>
             <Text style={{ fontSize: 9.5, fontWeight: 'bold', color: C.pink, textAlign: 'center' }}>
               CONTRATO DE LOCAÇÃO DE BRINQUEDOS E ARTIGOS INFANTIS
