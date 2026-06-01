@@ -1,3 +1,8 @@
+export interface ProductCategory {
+  nome: string;
+  imagem?: string | null;
+}
+
 export interface Product {
   id: string;
   nome: string;

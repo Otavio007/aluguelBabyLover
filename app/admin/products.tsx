@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Alert, ScrollView, Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Plus, Edit2, Trash2, Package, LogOut, FileText, Key, Share2, ExternalLink, Menu, Tags, ChevronRight } from 'lucide-react-native';
+import { Plus, Edit2, Trash2, Package, LogOut, FileText, Key, Share2, ExternalLink, Menu, Tags, ChevronRight, Camera } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Product } from '@/types';
+import { Product, ProductCategory } from '@/types';
+import { uploadService } from '@/services/uploadService';
+import { pickImageFile } from '@/utils/pickImageFile';
 import { getProductImages, getFirstProductImage } from '@/utils/imageHelper';
 import { getProductRules, getProductDescription } from '@/utils/rulesHelper';
 import { getProductDevolucaoDias, getProductEntregaHoraInicio, getProductEntregaHoraFim, getWeekdayDisplay } from '@/utils/schedulingHelper';
@@ -50,9 +52,12 @@ export default function AdminProducts() {
 
   // Categories
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
-  const [localCategories, setLocalCategories] = useState<string[]>([]);
+  const [localCategories, setLocalCategories] = useState<ProductCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryImageFile, setNewCategoryImageFile] = useState<File | null>(null);
+  const [newCategoryImagePreview, setNewCategoryImagePreview] = useState<string | null>(null);
   const [isSavingCategories, setIsSavingCategories] = useState(false);
+  const [isUploadingCategoryImage, setIsUploadingCategoryImage] = useState(false);
   const [categoryDeleteConfirm, setCategoryDeleteConfirm] = useState<string | null>(null);
 
   const loadSocialLinks = async () => {
@@ -86,24 +91,84 @@ export default function AdminProducts() {
       const cats = await settingsService.getCategories();
       setLocalCategories(cats);
       setNewCategoryName('');
+      setNewCategoryImageFile(null);
+      setNewCategoryImagePreview(null);
       setIsCategoriesModalOpen(true);
     } catch (err: any) {
       Alert.alert('Erro', 'Não foi possível carregar as categorias: ' + err.message);
     }
   };
 
-  const handleAddCategory = () => {
+  const clearNewCategoryImage = () => {
+    if (newCategoryImagePreview && Platform.OS === 'web') {
+      URL.revokeObjectURL(newCategoryImagePreview);
+    }
+    setNewCategoryImageFile(null);
+    setNewCategoryImagePreview(null);
+  };
+
+  const handlePickNewCategoryImage = async () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Atenção', 'Envie a imagem pelo painel no navegador (computador).');
+      return;
+    }
+    const file = await pickImageFile();
+    if (!file) return;
+    clearNewCategoryImage();
+    setNewCategoryImageFile(file);
+    setNewCategoryImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleChangeCategoryImage = async (index: number) => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Atenção', 'Altere a imagem pelo painel no navegador (computador).');
+      return;
+    }
+    const file = await pickImageFile();
+    if (!file) return;
+    const cat = localCategories[index];
+    if (!cat) return;
+
+    setIsUploadingCategoryImage(true);
+    try {
+      const url = await uploadService.uploadCategoryImage(cat.nome, file);
+      setLocalCategories((prev) =>
+        prev.map((c, i) => (i === index ? { ...c, imagem: url } : c))
+      );
+    } catch (err: any) {
+      Alert.alert('Erro', 'Não foi possível enviar a imagem: ' + err.message);
+    } finally {
+      setIsUploadingCategoryImage(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
     const name = newCategoryName.trim();
     if (!name) {
       Alert.alert('Atenção', 'Digite o nome da categoria.');
       return;
     }
-    if (localCategories.some(c => c.toLowerCase() === name.toLowerCase())) {
+    if (localCategories.some((c) => c.nome.toLowerCase() === name.toLowerCase())) {
       Alert.alert('Atenção', 'Esta categoria já existe.');
       return;
     }
-    setLocalCategories(prev => [...prev, name]);
+
+    let imagem: string | null = null;
+    if (newCategoryImageFile) {
+      setIsUploadingCategoryImage(true);
+      try {
+        imagem = await uploadService.uploadCategoryImage(name, newCategoryImageFile);
+      } catch (err: any) {
+        Alert.alert('Erro', 'Não foi possível enviar a imagem: ' + err.message);
+        return;
+      } finally {
+        setIsUploadingCategoryImage(false);
+      }
+    }
+
+    setLocalCategories((prev) => [...prev, { nome: name, imagem }]);
     setNewCategoryName('');
+    clearNewCategoryImage();
   };
 
   const handleRemoveCategory = (categoryName: string) => {
@@ -121,7 +186,7 @@ export default function AdminProducts() {
 
   const handleConfirmRemoveCategory = () => {
     if (!categoryDeleteConfirm) return;
-    setLocalCategories(prev => prev.filter(c => c !== categoryDeleteConfirm));
+    setLocalCategories((prev) => prev.filter((c) => c.nome !== categoryDeleteConfirm));
     setCategoryDeleteConfirm(null);
   };
 
@@ -217,7 +282,7 @@ export default function AdminProducts() {
     setEditingProduct({
       tipo_cobranca: 'Dia',
       quantidade: 1,
-      categoria: categories[0] ?? '',
+      categoria: categories[0]?.nome ?? '',
     });
     setNewRuleTitle('');
     setNewRuleText('');
@@ -462,22 +527,22 @@ export default function AdminProducts() {
               <Text className="mb-2 text-sm font-medium text-slate-700">Categoria</Text>
               {categories.length > 0 ? (
                 <View className="flex-row flex-wrap gap-2">
-                  {categories.map(cat => (
+                  {categories.map((cat) => (
                     <TouchableOpacity
-                      key={cat}
-                      onPress={() => setEditingProduct({ ...editingProduct, categoria: cat })}
+                      key={cat.nome}
+                      onPress={() => setEditingProduct({ ...editingProduct, categoria: cat.nome })}
                       className={`px-3 py-2 rounded-xl border ${
-                        editingProduct?.categoria === cat
+                        editingProduct?.categoria === cat.nome
                           ? 'bg-primary-500 border-primary-500'
                           : 'bg-white border-slate-200'
                       }`}
                     >
                       <Text
                         className={`text-xs font-bold ${
-                          editingProduct?.categoria === cat ? 'text-white' : 'text-slate-600'
+                          editingProduct?.categoria === cat.nome ? 'text-white' : 'text-slate-600'
                         }`}
                       >
-                        {cat}
+                        {cat.nome}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1012,21 +1077,34 @@ export default function AdminProducts() {
               <Text className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                 Categorias cadastradas
               </Text>
-              {localCategories.map(cat => {
-                const productCount = products?.filter(p => p.categoria === cat).length ?? 0;
+              {localCategories.map((cat, index) => {
+                const productCount = products?.filter((p) => p.categoria === cat.nome).length ?? 0;
                 return (
                   <View
-                    key={cat}
+                    key={cat.nome}
                     className="flex-row items-center bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 mb-2"
                   >
+                    <TouchableOpacity
+                      onPress={() => handleChangeCategoryImage(index)}
+                      disabled={isUploadingCategoryImage}
+                      className="mr-3 w-14 h-14 rounded-xl bg-white border border-slate-200 items-center justify-center overflow-hidden"
+                    >
+                      {cat.imagem ? (
+                        <Image source={{ uri: cat.imagem }} className="w-full h-full" resizeMode="cover" />
+                      ) : (
+                        <Camera size={20} color="#94a3b8" />
+                      )}
+                    </TouchableOpacity>
                     <View className="flex-1 mr-3">
-                      <Text className="text-sm font-bold text-slate-800">{cat}</Text>
+                      <Text className="text-sm font-bold text-slate-800">{cat.nome}</Text>
                       <Text className="text-xs text-slate-400 mt-0.5">
                         {productCount} {productCount === 1 ? 'produto' : 'produtos'}
+                        {cat.imagem ? ' • com imagem' : ' • sem imagem'}
                       </Text>
+                      <Text className="text-[10px] text-primary-600 mt-0.5">Toque na foto para alterar</Text>
                     </View>
                     <TouchableOpacity
-                      onPress={() => handleRemoveCategory(cat)}
+                      onPress={() => handleRemoveCategory(cat.nome)}
                       className="p-2 bg-red-50 rounded-xl"
                     >
                       <Trash2 size={16} color="#ef4444" />
@@ -1048,9 +1126,32 @@ export default function AdminProducts() {
               onChangeText={setNewCategoryName}
               containerClassName="mb-3"
             />
+            <Text className="text-xs font-medium text-slate-600 mb-2">
+              Imagem (aparece na página inicial do cliente)
+            </Text>
+            <TouchableOpacity
+              onPress={handlePickNewCategoryImage}
+              disabled={isUploadingCategoryImage}
+              className="w-full h-28 bg-white rounded-2xl border-2 border-dashed border-slate-300 items-center justify-center mb-3 overflow-hidden"
+            >
+              {newCategoryImagePreview ? (
+                <Image source={{ uri: newCategoryImagePreview }} className="w-full h-full" resizeMode="contain" />
+              ) : (
+                <View className="items-center">
+                  <Camera size={22} color="#94a3b8" />
+                  <Text className="text-slate-400 text-xs mt-1">Adicionar imagem da categoria</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            {newCategoryImagePreview ? (
+              <TouchableOpacity onPress={clearNewCategoryImage} className="mb-3">
+                <Text className="text-xs text-red-500 font-semibold text-center">Remover imagem selecionada</Text>
+              </TouchableOpacity>
+            ) : null}
             <Button
-              label="+ Adicionar"
+              label={isUploadingCategoryImage ? 'Enviando...' : '+ Adicionar categoria'}
               onPress={handleAddCategory}
+              disabled={isUploadingCategoryImage}
               className="h-10 py-1 bg-primary-600"
             />
           </View>

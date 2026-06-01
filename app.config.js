@@ -2,16 +2,16 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: "AluguelBabyLover",
+    name: "AlugaKi Baby",
     slug: "AluguelBabyLover",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/logo-mascot.png",
     scheme: "aluguelbabylover",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     splash: {
-      image: "./assets/images/splash-icon.png",
+      image: "./assets/images/logo-mascot.png",
       resizeMode: "contain",
       backgroundColor: "#fdf2fa"
     },
@@ -20,7 +20,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/images/adaptive-icon.png",
+        foregroundImage: "./assets/images/logo-mascot.png",
         backgroundColor: "#fdf2fa"
       },
       edgeToEdgeEnabled: true,
@@ -29,7 +29,7 @@ export default {
     web: {
       bundler: "metro",
       output: "single",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/logo-mascot.png"
     },
     plugins: [
       "expo-router"

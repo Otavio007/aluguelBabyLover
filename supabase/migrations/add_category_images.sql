@@ -1,0 +1,8 @@
+-- Categorias com imagem: formato JSON em app_settings.chave = 'product_categories'
+-- Exemplo:
+-- [
+--   { "nome": "Carrinhos", "imagem": "https://.../product-images/categories/carrinhos-123.jpg" },
+--   { "nome": "Cadeirinhas", "imagem": null }
+-- ]
+--
+-- Categorias antigas (só texto) continuam funcionando; o app converte automaticamente.

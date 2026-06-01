@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LOGO_MASCOT, BRAND } from '@/constants/brand';
+import { BRAND } from '@/constants/brand';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { useSocialLinks } from '@/hooks/useSocialLinks';
 import { ExternalLink, Heart } from 'lucide-react-native';
 
@@ -20,33 +21,7 @@ export const Footer = () => {
       }}
     >
       <View className="mb-8">
-        <View className="flex-row items-center gap-3 mb-4">
-          <Image
-            source={LOGO_MASCOT}
-            style={{
-              width: 52,
-              height: 52,
-              ...(Platform.OS === 'web' ? { mixBlendMode: 'screen' as const } : {}),
-            }}
-            resizeMode="contain"
-          />
-          <View>
-            <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800', lineHeight: 28 }}>
-              Alugaki
-            </Text>
-            <Text
-              style={{
-                color: BRAND.accent,
-                fontSize: 20,
-                fontWeight: '800',
-                lineHeight: 24,
-                marginTop: -2,
-              }}
-            >
-              Baby
-            </Text>
-          </View>
-        </View>
+        <BrandLogo size="md" style={{ marginBottom: 16 }} />
         <Text className="text-white/70 leading-relaxed max-w-md text-sm">
           A melhor plataforma de locação de produtos infantis para o conforto do seu bebê e
           economia para você.

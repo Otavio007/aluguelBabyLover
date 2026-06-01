@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { Search, Package, Sparkles, ShieldCheck, Heart } from 'lucide-react-native';
 import { useProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
+import { CategoryRentSection } from '@/components/home/CategoryRentSection';
 import { ProductCard } from '@/components/product/ProductCard';
 import { getProductDescription } from '@/utils/rulesHelper';
 import { Header } from '@/components/layout/Header';
@@ -15,9 +16,6 @@ export default function Home() {
   const [category, setCategory] = useState('Todos');
   const { data: products, isLoading } = useProducts();
   const { data: categories = [] } = useCategories();
-
-  const categoryFilters = ['Todos', ...categories];
-
   const filteredProducts = products?.filter((p) => {
     const desc = getProductDescription(p).toLowerCase();
     const matchesSearch =
@@ -92,41 +90,29 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Categories */}
-        <View className="py-5" style={{ backgroundColor: '#FDF4FF' }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24 }}
-          >
-            {categoryFilters.map((cat) => {
-              const active = category === cat;
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  onPress={() => setCategory(cat)}
-                  className="px-5 py-2.5 rounded-full mr-2.5"
-                  style={{
-                    backgroundColor: active ? BRAND.accent : '#fff',
-                    borderWidth: 1,
-                    borderColor: active ? BRAND.accent : '#E9CCFF',
-                    shadowColor: active ? BRAND.accent : 'transparent',
-                    shadowOpacity: active ? 0.3 : 0,
-                    shadowRadius: 8,
-                    elevation: active ? 3 : 0,
-                  }}
-                >
-                  <Text
-                    className="font-bold text-sm"
-                    style={{ color: active ? '#fff' : BRAND.primary }}
-                  >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+        <CategoryRentSection
+          categories={categories}
+          selectedCategory={category === 'Todos' ? '' : category}
+          onSelectCategory={(nome) => setCategory(nome)}
+        />
+
+        {category !== 'Todos' && (
+          <View className="px-6 pb-2" style={{ backgroundColor: BRAND.primary }}>
+            <TouchableOpacity
+              onPress={() => setCategory('Todos')}
+              className="self-start px-4 py-2 rounded-full"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,108,182,0.45)',
+              }}
+            >
+              <Text className="text-sm font-bold text-white">
+                ← Ver todas as categorias
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Products grid */}
         <View className="px-6 pb-12">

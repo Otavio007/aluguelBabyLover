@@ -63,5 +63,32 @@ export const uploadService = {
       .getPublicUrl(fileName);
 
     return publicUrlData.publicUrl;
-  }
+  },
+
+  async uploadCategoryImage(categoryName: string, file: Blob | File) {
+    const ext =
+      file instanceof File
+        ? file.name.split('.').pop() || 'jpg'
+        : 'jpg';
+    const safe = categoryName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .toLowerCase();
+    const filePath = `categories/${safe}-${Date.now()}.${ext}`;
+    const contentType =
+      file instanceof File && file.type ? file.type : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file, { contentType, upsert: true });
+
+    if (error) throw error;
+
+    const { data: publicUrlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  },
 };
