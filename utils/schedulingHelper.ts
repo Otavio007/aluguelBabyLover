@@ -43,48 +43,69 @@ export const getProductDevolucaoDias = (product: any): string[] => {
   return ALL_WEEKDAYS; // Default is all days
 };
 
+const DEFAULT_RETIRADA_HORA = '09:00';
+const DEFAULT_DEVOLUCAO_HORA = '18:00';
+
+/** Garante HH:MM válido para colunas TIME do Postgres (rejeita string vazia). */
+export function normalizeTime(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return fallback;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return fallback;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 export const getProductEntregaHoraInicio = (product: any): string => {
   if (product) {
-    if (product.entrega_hora_inicio) return product.entrega_hora_inicio;
+    const fromColumn = normalizeTime(product.entrega_hora_inicio, '');
+    if (fromColumn) return fromColumn;
 
-    // Try parsing from description JSON fallback
     if (product.descricao) {
       const trimmed = product.descricao.trim();
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
         try {
           const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === 'object' && typeof parsed.entrega_hora_inicio === 'string') {
-            return parsed.entrega_hora_inicio;
+          if (parsed && typeof parsed === 'object') {
+            const fromJson = normalizeTime(parsed.entrega_hora_inicio, '');
+            if (fromJson) return fromJson;
           }
-        } catch (e) {
-          // Fallback
+        } catch {
+          // fallback abaixo
         }
       }
     }
   }
-  return '08:00';
+  return DEFAULT_RETIRADA_HORA;
 };
 
 export const getProductEntregaHoraFim = (product: any): string => {
   if (product) {
-    if (product.entrega_hora_fim) return product.entrega_hora_fim;
+    const fromColumn = normalizeTime(product.entrega_hora_fim, '');
+    if (fromColumn) return fromColumn;
 
-    // Try parsing from description JSON fallback
     if (product.descricao) {
       const trimmed = product.descricao.trim();
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
         try {
           const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === 'object' && typeof parsed.entrega_hora_fim === 'string') {
-            return parsed.entrega_hora_fim;
+          if (parsed && typeof parsed === 'object') {
+            const fromJson = normalizeTime(parsed.entrega_hora_fim, '');
+            if (fromJson) return fromJson;
           }
-        } catch (e) {
-          // Fallback
+        } catch {
+          // fallback abaixo
         }
       }
     }
   }
-  return '18:00';
+  return DEFAULT_DEVOLUCAO_HORA;
 };
 
 /**

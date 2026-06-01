@@ -22,6 +22,7 @@ import { BRAND, LOGO_MASCOT } from '@/constants/brand';
 import {
   getProductEntregaHoraInicio,
   getProductEntregaHoraFim,
+  normalizeTime,
 } from '@/utils/schedulingHelper';
 
 function getErrorMessage(error: unknown): string {
@@ -119,9 +120,15 @@ export default function ContractPage() {
         cliente_cpf: data.cpf,
         cliente_telefone: data.telefone,
         retirada_data: startDate!,
-        retirada_hora: getProductEntregaHoraInicio(product),
+        retirada_hora: normalizeTime(
+          getProductEntregaHoraInicio(product),
+          '09:00'
+        ),
         devolucao_data: endDate!,
-        devolucao_hora: getProductEntregaHoraFim(product),
+        devolucao_hora: normalizeTime(
+          getProductEntregaHoraFim(product),
+          '18:00'
+        ),
         status: 'Pendente',
         quantidade: selectedQty,
         valor_total: valorUnit * calculatedDays * selectedQty,
